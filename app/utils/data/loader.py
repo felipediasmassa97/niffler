@@ -36,8 +36,10 @@ class Loader(Operator):
         # Filter actuals only
         data_ = data_[data_["Status"] == "Paid"]
 
+        # Convert dates to datetime
         data_["Date"] = pd.to_datetime(data_["Date"], format="%d/%m/%Y")
-        data_["Month"] = data_["Date"].dt.to_period("M")
-        data_["Month"] = data_["Month"].dt.to_timestamp()
+
+        # Extract month from date
+        data_["Month"] = data_["Date"].dt.to_period("M").dt.to_timestamp()
 
         return data_

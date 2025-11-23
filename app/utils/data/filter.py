@@ -1,0 +1,111 @@
+"""Data filters."""
+
+import pandas as pd
+
+from utils.data import Operator
+
+
+class Filter(Operator):
+    """Data filter."""
+
+    def __init__(self, operator: Operator, filters: bool):
+        """Initialize the filter."""
+        if filters is None:
+            filters = True
+        self._data = self._filter_data(operator.data, filters)
+
+    @property
+    def data(self) -> pd.DataFrame:
+        return self._data
+
+    def _filter_data(self, data: pd.DataFrame, filters: bool) -> pd.DataFrame:
+        """Filter data based on criteria."""
+        data_ = data.copy()
+        return data_[filters]
+
+
+class ExpensesFilter(Filter):
+    """Expenses filter."""
+
+    def __init__(self, operator: Operator):
+        super().__init__(operator, operator.data["Value"] < 0)
+
+
+class IncomesFilter(Filter):
+    """Incomes filter."""
+
+    def __init__(self, operator: Operator):
+        super().__init__(operator, operator.data["Value"] > 0)
+
+
+class DateFilter(Filter):
+    """Date filter."""
+
+    def __init__(
+        self,
+        operator: Operator,
+        start_date: pd.Timestamp,
+        end_date: pd.Timestamp | None = None,
+    ):
+        if end_date is None:
+            end_date = pd.Timestamp.now()
+        super().__init__(
+            operator,
+            (operator.data["Date"] >= start_date) & (operator.data["Date"] <= end_date),
+        )
+
+
+class ThisYearFilter(DateFilter):
+    """This year filter."""
+
+    def __init__(self, operator: Operator):
+        super().__init__(
+            operator,
+            start_date=pd.Timestamp(year=pd.Timestamp.now().year, month=1, day=1),
+        )
+
+
+class ThisMonthFilter(DateFilter):
+    """This month filter."""
+
+    def __init__(self, operator: Operator):
+        now = pd.Timestamp.now()
+        super().__init__(
+            operator,
+            start_date=pd.Timestamp(year=now.year, month=now.month, day=1),
+        )
+
+
+class Last12MonthsFilter(DateFilter):
+    """Last 12 months filter."""
+
+    def __init__(self, operator: Operator):
+        super().__init__(
+            operator,
+            start_date=pd.Timestamp(
+                pd.Timestamp.now() - pd.DateOffset(months=12)
+            ).replace(day=1),
+        )
+
+
+class Last3MonthsFilter(DateFilter):
+    """Last 3 months filter."""
+
+    def __init__(self, operator: Operator):
+        super().__init__(
+            operator,
+            start_date=pd.Timestamp(
+                pd.Timestamp.now() - pd.DateOffset(months=3)
+            ).replace(day=1),
+        )
+
+
+class AllTimeFilter(DateFilter):
+    """All time filter."""
+
+    def __init__(self, operator: Operator):
+        # We started using Mobills in 2024
+        super().__init__(
+            operator,
+            start_date=pd.Timestamp(year=2024, month=1, day=1),
+        )

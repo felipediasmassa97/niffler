@@ -24,7 +24,12 @@ class Aggregator(Operator):
         data_ = data.copy()
         if not columns:
             return data_
-        return data_.groupby(columns)["Value"].sum().reset_index()
+        return (
+            data_.groupby(columns)["Value"]
+            .sum()
+            .reset_index()
+            .sort_values(by=["Value", *columns], ascending=False)
+        )
 
 
 class CombinedAggregator(Aggregator):
@@ -54,11 +59,17 @@ class MonthlyAggregator(Aggregator):
 
     columns = ["Month"]
 
+    def __init__(self, operator: Operator):
+        super().__init__(operator, self.columns)
+
 
 class YearlyAggregator(Aggregator):
     """Yearly aggregator."""
 
     columns = ["Year"]
+
+    def __init__(self, operator: Operator):
+        super().__init__(operator, self.columns)
 
 
 class CategoryAggregator(Aggregator):
@@ -66,11 +77,17 @@ class CategoryAggregator(Aggregator):
 
     columns = ["Category"]
 
+    def __init__(self, operator: Operator):
+        super().__init__(operator, self.columns)
+
 
 class TierAggregator(Aggregator):
     """Tier aggregator."""
 
     columns = ["Tier"]
+
+    def __init__(self, operator: Operator):
+        super().__init__(operator, self.columns)
 
 
 class MonthlyCategoryAggregator(CombinedAggregator):

@@ -2,10 +2,11 @@
 
 import streamlit as st
 
-from utils.charts import BarChart
-from utils.data.aggregator import MonthlyCategoryAggregator
-from utils.data.filterer import ExpensesFilterer, IncomesFilterer
-from utils.data.loader import Loader
+from utils import charts as ch
+from utils.data import aggregator as agg
+from utils.data import filter as fl
+from utils.data import loader as ldr
+from utils.data import transformer as tr
 
 
 def monthly_view():
@@ -13,26 +14,74 @@ def monthly_view():
     st.title("Monthly View")
 
     # Load data from report
-    loader = Loader()
-    expenses = ExpensesFilterer(loader)
-    incomes = IncomesFilterer(loader)
+    loader = ldr.Loader()
+
+    # Date filter
+    cmp_date_filter = st.selectbox(
+        "Date Range",
+        options=[
+            {"label": "This Year", "filter": fl.ThisYearFilter},
+            {"label": "This Month", "filter": fl.ThisMonthFilter},
+            {"label": "Last 12 Months", "filter": fl.Last12MonthsFilter},
+            {"label": "Last 3 Months", "filter": fl.Last3MonthsFilter},
+            {"label": "All Time", "filter": fl.AllTimeFilter},
+        ],
+        index=0,
+        format_func=lambda x: x["label"],
+    )
+    date_filter = cmp_date_filter["filter"]
+
+    # Apply date filter
+    all_data = date_filter(loader)
+    expenses = date_filter(tr.Inverter(fl.ExpensesFilter(loader)))
+    incomes = date_filter(fl.IncomesFilter(loader))
 
     # Monthly trend
 
     ## Filters:
-    ## - Last 12 months (default)
     ## - This year
+    ## - This month
+    ## - Last 12 months (default)
+    ## - Last 3 months
     ## - All time
     ## - Custom range
 
     ## Total monthly incomes, expenses and net income
+    st.plotly_chart(
+        ch.GroupedBarChart(
+            operator=tr.Merger(
+                # Add labels to distinguish the three series in chart
+                tr.LabelAssigner(
+                    agg.MonthlyAggregator(incomes),
+                    label_col="Type",
+                    label_val="Income",
+                ),
+                tr.LabelAssigner(
+                    agg.MonthlyAggregator(expenses),
+                    label_col="Type",
+                    label_val="Expense",
+                ),
+                tr.LabelAssigner(
+                    agg.MonthlyAggregator(all_data),
+                    label_col="Type",
+                    label_val="Net Income",
+                ),
+            ),
+            column_x="Month",
+            column_y="Value",
+            column_cat="Type",
+            column_text="Value",
+            title="Monthly Balance",
+        ).chart
+    )
 
     ## Fixed, variable and lifestyle costs
+    # fixit add this chart
 
     ## Per-category expenses breakdown
     st.plotly_chart(
-        BarChart(
-            operator=MonthlyCategoryAggregator(expenses),
+        ch.SimpleBarChart(
+            operator=agg.MonthlyCategoryAggregator(expenses),
             column_x="Month",
             column_y="Value",
             column_cat="Category",
@@ -42,8 +91,8 @@ def monthly_view():
 
     ## Per-category incomes breakdown
     st.plotly_chart(
-        BarChart(
-            operator=MonthlyCategoryAggregator(incomes),
+        ch.SimpleBarChart(
+            operator=agg.MonthlyCategoryAggregator(incomes),
             column_x="Month",
             column_y="Value",
             column_cat="Category",
@@ -53,18 +102,28 @@ def monthly_view():
 
     # Period summary
 
-    ## Filters:
-    ## - Current month (default)
-    ## - Last 3 months
-    ## - This year
-    ## - All time
-    ## - Custom range
-
     ## Fixed, variable and lifestyle costs
+    # fixit add this chart
 
     ## Per-category expenses breakdown
+    st.plotly_chart(
+        ch.SimpleBarChart(
+            operator=agg.CategoryAggregator(expenses),
+            column_x="Category",
+            column_y="Value",
+            title="All Expenses by Category",
+        ).chart
+    )
 
     ## Per-category incomes breakdown
+    st.plotly_chart(
+        ch.SimpleBarChart(
+            operator=agg.CategoryAggregator(incomes),
+            column_x="Category",
+            column_y="Value",
+            title="All Incomes by Category",
+        ).chart
+    )
 
 
 monthly_view_page = st.Page(
