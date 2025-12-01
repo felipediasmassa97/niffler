@@ -5,6 +5,7 @@ import glob
 import pandas as pd
 
 from utils.data import Operator
+from utils.data.rules import assign_dillution, assign_tiers
 
 
 class Loader(Operator):
@@ -14,6 +15,8 @@ class Loader(Operator):
         """Initialize the data loader."""
         path = self._get_latest_data_path()
         self._data = self._preprocess_data(pd.read_excel(path, engine="openpyxl"))
+        self._data["Tier"] = self._data.apply(assign_tiers, axis=1)
+        self._data["Dillution"] = self._data.apply(assign_dillution, axis=1)
 
     @property
     def data(self) -> pd.DataFrame:
