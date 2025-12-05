@@ -5,7 +5,7 @@ import glob
 import pandas as pd
 
 from utils.data import Operator
-from utils.data.rules import assign_dillution, assign_tiers
+from utils.data.rules import assign_dillution, assign_tiers, dillute_costs
 
 
 class Loader(Operator):
@@ -17,6 +17,8 @@ class Loader(Operator):
         self._data = self._preprocess_data(pd.read_excel(path, engine="openpyxl"))
         self._data["Tier"] = self._data.apply(assign_tiers, axis=1)
         self._data["Dillution"] = self._data.apply(assign_dillution, axis=1)
+        # fixit only apply dillute costs when a class is applied (so we can inspect both without dilluting and with dilluting)
+        self._data = dillute_costs(self._data)
 
     @property
     def data(self) -> pd.DataFrame:
