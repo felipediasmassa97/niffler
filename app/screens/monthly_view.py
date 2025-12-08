@@ -6,6 +6,7 @@ from utils import charts as ch
 from utils.data import aggregator as agg
 from utils.data import filter as fl
 from utils.data import loader as ldr
+from utils.data import rules as rl
 from utils.data import transformer as tr
 
 
@@ -13,17 +14,20 @@ def monthly_view():
     """Monthly View page."""
     st.title("Monthly View")
 
-    # Load data from report
-    loader = ldr.Loader()
+    # Load data from report and assign tiers
+    loader = rl.TierAssigner(ldr.Loader())
 
     # Date filter
+    # fixit add custom date range picker
     cmp_date_filter = st.selectbox(
         "Date Range",
         options=[
             {"label": "This Year", "filter": fl.ThisYearFilter},
             {"label": "This Month", "filter": fl.ThisMonthFilter},
-            {"label": "Last 12 Months", "filter": fl.Last12MonthsFilter},
+            {"label": "Last Month", "filter": fl.LastMonthFilter},
             {"label": "Last 3 Months", "filter": fl.Last3MonthsFilter},
+            {"label": "Last 12 Months", "filter": fl.Last12MonthsFilter},
+            {"label": "Last Year", "filter": fl.LastYearFilter},
             {"label": "All Time", "filter": fl.AllTimeFilter},
         ],
         index=0,
@@ -31,22 +35,20 @@ def monthly_view():
     )
     date_filter = cmp_date_filter["filter"]
 
+    # Data dilution toggle
+    if st.checkbox("Dilute Costs", value=True):
+        loader = rl.Diluter(loader)
+
+    st.write(loader.data)
+
     # Apply date filter
     all_data = date_filter(loader)
     expenses = date_filter(tr.Inverter(fl.ExpensesFilter(loader)))
     incomes = date_filter(fl.IncomesFilter(loader))
 
-    # Monthly trend
+    st.subheader("Monthly Trend")
 
-    ## Filters:
-    ## - This year
-    ## - This month
-    ## - Last 12 months (default)
-    ## - Last 3 months
-    ## - All time
-    ## - Custom range
-
-    ## Total monthly incomes, expenses and net income
+    # Total monthly incomes, expenses and net income
     st.plotly_chart(
         ch.GroupedBarChart(
             operator=tr.Merger(
@@ -75,10 +77,20 @@ def monthly_view():
         ).chart
     )
 
-    ## Fixed, variable and lifestyle costs
-    # fixit add this chart
+    # Per-tier expenses breakdown
+    # fixit add category order (fixed on base, lifestyle on top)
+    # fixit add custom colors for tiers
+    st.plotly_chart(
+        ch.SimpleBarChart(
+            operator=agg.MonthlyTierAggregator(expenses),
+            column_x="Month",
+            column_y="Value",
+            column_cat="Tier",
+            title="Monthly Expenses by Tier",
+        ).chart
+    )
 
-    ## Per-category expenses breakdown
+    # Per-category expenses breakdown
     st.plotly_chart(
         ch.SimpleBarChart(
             operator=agg.MonthlyCategoryAggregator(expenses),
@@ -89,7 +101,7 @@ def monthly_view():
         ).chart
     )
 
-    ## Per-category incomes breakdown
+    # Per-category incomes breakdown
     st.plotly_chart(
         ch.SimpleBarChart(
             operator=agg.MonthlyCategoryAggregator(incomes),
@@ -100,12 +112,20 @@ def monthly_view():
         ).chart
     )
 
-    # Period summary
+    st.subheader("Period Summary")
 
-    ## Fixed, variable and lifestyle costs
-    # fixit add this chart
+    # Per-tier expenses breakdown
+    # fixit add custom colors for tiers
+    st.plotly_chart(
+        ch.SimpleBarChart(
+            operator=agg.TierAggregator(expenses),
+            column_x="Tier",
+            column_y="Value",
+            title="All Expenses by Tier",
+        ).chart
+    )
 
-    ## Per-category expenses breakdown
+    # Per-category expenses breakdown
     st.plotly_chart(
         ch.SimpleBarChart(
             operator=agg.CategoryAggregator(expenses),
@@ -115,7 +135,7 @@ def monthly_view():
         ).chart
     )
 
-    ## Per-category incomes breakdown
+    # Per-category incomes breakdown
     st.plotly_chart(
         ch.SimpleBarChart(
             operator=agg.CategoryAggregator(incomes),

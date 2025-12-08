@@ -76,15 +76,16 @@ class ThisMonthFilter(DateFilter):
         )
 
 
-class Last12MonthsFilter(DateFilter):
-    """Last 12 months filter."""
+class LastMonthFilter(DateFilter):
+    """Last month filter."""
 
     def __init__(self, operator: Operator):
+        now = pd.Timestamp.now()
         super().__init__(
             operator,
-            start_date=pd.Timestamp(
-                pd.Timestamp.now() - pd.DateOffset(months=12)
-            ).replace(day=1),
+            start_date=pd.Timestamp(year=now.year, month=now.month - 1, day=1),
+            end_date=pd.Timestamp(year=now.year, month=now.month, day=1)
+            - pd.Timedelta(days=1),
         )
 
 
@@ -100,6 +101,29 @@ class Last3MonthsFilter(DateFilter):
         )
 
 
+class Last12MonthsFilter(DateFilter):
+    """Last 12 months filter."""
+
+    def __init__(self, operator: Operator):
+        super().__init__(
+            operator,
+            start_date=pd.Timestamp(
+                pd.Timestamp.now() - pd.DateOffset(months=12)
+            ).replace(day=1),
+        )
+
+
+class LastYearFilter(DateFilter):
+    """Last year filter."""
+
+    def __init__(self, operator: Operator):
+        super().__init__(
+            operator,
+            start_date=pd.Timestamp(year=pd.Timestamp.now().year - 1, month=1, day=1),
+            end_date=pd.Timestamp(year=pd.Timestamp.now().year - 1, month=12, day=31),
+        )
+
+
 class AllTimeFilter(DateFilter):
     """All time filter."""
 
@@ -109,3 +133,6 @@ class AllTimeFilter(DateFilter):
             operator,
             start_date=pd.Timestamp(year=2024, month=1, day=1),
         )
+
+
+# fixit add custom date range filter

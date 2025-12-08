@@ -1,13 +1,33 @@
-"""Business rules utils."""
+"""Data business rules."""
 
 import pandas as pd
 from unidecode import unidecode
 
+from utils.data import Operator
 
-def assign_tiers(row: pd.Series) -> str:
-    """Assign tiers to the given data."""
 
-    def assign_tiers_income(category: str, description: str) -> bool:
+class TierAssigner(Operator):
+    """Data tier assigner."""
+
+    def __init__(self, operator: Operator) -> None:
+        """Initialize the tier assigner."""
+        self._data = operator.data.copy()
+        self._data["Tier"] = self._data.apply(self._assign_tiers, axis=1)
+
+    @property
+    def data(self) -> pd.DataFrame:
+        return self._data
+
+    def _assign_tiers(self, row: pd.Series) -> str:
+        """Assign tiers to the given data."""
+        category = row["Category"]
+        description = self._standardize_string(row["Description"])
+        value = row["Value"]
+        if value > 0:
+            return self._assign_tiers_income(category, description)
+        return self._assign_tiers_expense(category, description)
+
+    def _assign_tiers_income(self, category: str, description: str) -> bool:
         """Assign tiers for income entries."""
 
         # Specific cases
@@ -21,7 +41,7 @@ def assign_tiers(row: pd.Series) -> str:
             "Salary": "Fixed",
         }[category]
 
-    def assign_tiers_expense(category: str, description: str) -> bool:
+    def _assign_tiers_expense(self, category: str, description: str) -> bool:
         """Assign tiers for expense entries."""
 
         # Specific cases
@@ -48,43 +68,68 @@ def assign_tiers(row: pd.Series) -> str:
         return {
             "Car": "Fixed",
             "Commute": "Fixed",
-            "Donation": "Discretionary",
+            "Donation": "Lifestyle",
             "Education": "Variable",
-            "Gift": "Discretionary",
+            "Gift": "Lifestyle",
             "Health": "Variable",
             "High Costs": "Variable",
             "Home": "Variable",
             "Maintenance": "Variable",
-            "Personal Felp": "Discretionary",
-            "Personal Lena": "Discretionary",
+            "Personal Felp": "Lifestyle",
+            "Personal Lena": "Lifestyle",
             "Pharmacy": "Variable",
             "Physical": "Variable",
-            "Recreation": "Discretionary",
+            "Recreation": "Lifestyle",
             "Rent": "Fixed",
-            "Restaurant": "Discretionary",
+            "Restaurant": "Lifestyle",
             "Services": "Fixed",
-            "Subscriptions": "Discretionary",
+            "Subscriptions": "Lifestyle",
             "Supermarket": "Fixed",
             "Transport": "Variable",
-            "Travel": "Discretionary",
+            "Travel": "Lifestyle",
             "Unknown": "Variable",
             "Work": "Variable",
             "Work Lunch": "Variable",
         }[category]
 
-    category = row["Category"]
-    description = _standardize_string(row["Description"])
-    value = row["Value"]
-    if value > 0:
-        return assign_tiers_income(category, description)
-    return assign_tiers_expense(category, description)
+    def _standardize_string(self, s: str) -> str:
+        """Standardize a string by removing accents and converting to lowercase."""
+        return unidecode(s).lower()
 
 
-def assign_dillution(row: pd.Series) -> str:
-    """Assign dillution to the given data."""
+class Diluter(Operator):
+    """Data expenses diluter.
 
-    def assign_dillution_income(category: str, value: float) -> bool:
-        """Assign dillution for income entries."""
+    Dilutes specific incomes and expenses over a 12-month period.
+
+    Transactions to be diluted depend on business rules associated to their category and value.
+    """
+
+    def __init__(self, operator: Operator) -> None:
+        """Initialize the tier assigner."""
+
+        self._data = operator.data.copy()
+
+        self._data["Dilution"] = self._data.apply(self._assign_dilution, axis=1)
+        self._data = self._dilute_costs(self._data)
+
+        # Update Month column after dilution
+        self._data["Month"] = self._data["Date"].dt.to_period("M").dt.to_timestamp()
+
+    @property
+    def data(self) -> pd.DataFrame:
+        return self._data
+
+    def _assign_dilution(self, row: pd.Series) -> str:
+        """Assign dilution to the given data."""
+        category = row["Category"]
+        value = row["Value"]
+        if value > 0:
+            return self._assign_dilution_income(category, value)
+        return self._assign_dilution_expense(category, abs(value))
+
+    def _assign_dilution_income(self, category: str, value: float) -> bool:
+        """Assign dilution for income entries."""
 
         # Specific cases
         if category == "Refund" and value >= 500:
@@ -98,8 +143,8 @@ def assign_dillution(row: pd.Series) -> str:
             "Salary": True,
         }[category]
 
-    def assign_dillution_expense(category: str, value: float) -> bool:
-        """Assign dillution for expense entries."""
+    def _assign_dilution_expense(self, category: str, value: float) -> bool:
+        """Assign dilution for expense entries."""
 
         # Specific cases
         if category == "Car" and value >= 300:
@@ -141,53 +186,43 @@ def assign_dillution(row: pd.Series) -> str:
             "Work Lunch": False,
         }[category]
 
-    category = row["Category"]
-    value = row["Value"]
-    if value > 0:
-        return assign_dillution_income(category, value)
-    return assign_dillution_expense(category, abs(value))
+    def _dilute_costs(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Dilute costs in the given data.
 
+        Diluting means spreading the cost over 12 months.
+        """
+        data_ = data.copy()
 
-def _standardize_string(s: str) -> str:
-    """Standardize a string by removing accents and converting to lowercase."""
-    return unidecode(s).lower()
+        # Separate dilution and non-dilution entries
+        data_keep = data_[~data_["Dilution"]].copy()
+        data_dilute = data_[data_["Dilution"]].copy()
 
+        # Dilute costs
+        data_dilute["ValueDiluted"] = data_dilute["Value"].apply(
+            self._get_diluted_values
+        )
+        data_dilute["DateDiluted"] = data_dilute["Date"].apply(self._get_diluted_dates)
+        data_dilute = data_dilute.explode(["ValueDiluted", "DateDiluted"])
+        data_dilute["Value"] = data_dilute["ValueDiluted"]
+        data_dilute["Date"] = data_dilute["DateDiluted"]
+        data_dilute = data_dilute.drop(columns=["ValueDiluted", "DateDiluted"])
 
-def dillute_costs(data: pd.DataFrame) -> pd.DataFrame:
-    """Dillute costs in the given data.
+        # Combine data back
+        return pd.concat([data_keep, data_dilute], ignore_index=True)
 
-    Dilluting means spreading the cost over 12 months.
-    """
-    data_ = data.copy()
+    def _get_diluted_values(self, value: float) -> list[float]:
+        """Get diluted values for a given value.
 
-    # Separate dillution and non-dillution entries
-    data_keep = data_[~data_["Dillution"]].copy()
-    data_dillute = data_[data_["Dillution"]].copy()
+        For dilution, the cost is spread over 12 months of the same year.
+        """
+        return [value / 12] * 12
 
-    # Dillute costs
-    data_dillute["ValueDilluted"] = data_dillute["Value"].apply(get_dilluted_values)
-    data_dillute["DateDilluted"] = data_dillute["Date"].apply(get_dilluted_dates)
-    data_dillute = data_dillute.explode(["ValueDilluted", "DateDilluted"])
-    data_dillute["Value"] = data_dillute["ValueDilluted"]
-    data_dillute["Date"] = data_dillute["DateDilluted"]
-    data_dillute = data_dillute.drop(columns=["ValueDilluted", "DateDilluted"])
+    def _get_diluted_dates(self, date: pd.Timestamp) -> pd.DatetimeIndex:
+        """Get diluted dates for a given date.
 
-    # Combine data back
-    return pd.concat([data_keep, data_dillute], ignore_index=True)
-
-
-def get_dilluted_values(value: float) -> list[float]:
-    """Get dilluted values for a given value.
-
-    For dillution, the cost is spread over 12 months of the same year.
-    """
-    return [value / 12] * 12
-
-
-def get_dilluted_dates(date: pd.Timestamp) -> pd.DatetimeIndex:
-    """Get dilluted dates for a given date.
-
-    For dillution, the cost is spread over 12 months of the same year.
-    For simplification, the first day of each month is used.
-    """
-    return [pd.Timestamp(year=date.year, month=month, day=1) for month in range(1, 13)]
+        For dilution, the cost is spread over 12 months of the same year.
+        For simplification, the first day of each month is used.
+        """
+        return [
+            pd.Timestamp(year=date.year, month=month, day=1) for month in range(1, 13)
+        ]

@@ -35,4 +35,4 @@ class Operator(ABC):
 # Rules:
 
 # - Actuals
-# - Effectives (dilluted)
+# - Effectives (diluted)

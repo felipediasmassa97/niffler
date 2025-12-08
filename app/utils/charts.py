@@ -8,6 +8,10 @@ import plotly.graph_objects as go
 
 from utils.data import Operator
 
+# fixit add category order
+# fixit add custom colors for categories
+# fixit make fancier charts (fine formatting on tooltip, for example)
+
 
 @dataclass
 class BarChart(ABC):
