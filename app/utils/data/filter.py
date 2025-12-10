@@ -128,10 +128,13 @@ class AllTimeFilter(DateFilter):
     """All time filter."""
 
     def __init__(self, operator: Operator):
-        # We started using Mobills in 2024
+        """Initialize all time filter.
+
+        Started using Mobills in Jan-24, but first data is from Dec-23 (main trip budget).
+        """
         super().__init__(
             operator,
-            start_date=pd.Timestamp(year=2024, month=1, day=1),
+            start_date=pd.Timestamp(year=2023, month=12, day=31),
         )
 
 
