@@ -79,12 +79,12 @@ def monthly_view():
             column_y="Value",
             column_cat="Type",
             column_text="Value",
+            column_cat_orders={"Type": ["Income", "Expense", "Net Income"]},
             title="Monthly Balance",
         ).chart
     )
 
     # Per-tier expenses breakdown
-    # fixit add category order (fixed on base, lifestyle on top)
     # fixit add custom colors for tiers
     st.plotly_chart(
         ch.SimpleBarChart(
@@ -92,6 +92,7 @@ def monthly_view():
             column_x="Month",
             column_y="Value",
             column_cat="Tier",
+            column_cat_orders={"Tier": ["Fixed", "Variable", "Lifestyle"]},
             title="Monthly Expenses by Tier",
         ).chart
     )
@@ -127,6 +128,7 @@ def monthly_view():
             operator=agg.TierAggregator(expenses),
             column_x="Tier",
             column_y="Value",
+            column_cat_orders={"Tier": ["Fixed", "Variable", "Lifestyle"]},
             title="All Expenses by Tier",
         ).chart
     )

@@ -8,7 +8,6 @@ import plotly.graph_objects as go
 
 from utils.data import Operator
 
-# fixit add category order
 # fixit add custom colors for categories
 # fixit make fancier charts (fine formatting on tooltip, for example)
 
@@ -22,6 +21,7 @@ class BarChart(ABC):
     column_y: str
     column_cat: str = None
     column_text: str = None
+    column_cat_orders: dict[str, list[str]] = None
     title: str = None
 
     @property
@@ -41,6 +41,7 @@ class SimpleBarChart(BarChart):
             y=self.column_y,
             color=self.column_cat,
             text=self.column_text,
+            category_orders=self.column_cat_orders,
             title=self.title,
         )
 
@@ -56,6 +57,7 @@ class GroupedBarChart(BarChart):
             y=self.column_y,
             color=self.column_cat,
             text=self.column_text,
+            category_orders=self.column_cat_orders,
             title=self.title,
             barmode="group",
         )
