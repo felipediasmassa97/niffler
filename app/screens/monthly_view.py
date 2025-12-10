@@ -10,12 +10,18 @@ from utils.data import rules as rl
 from utils.data import transformer as tr
 
 
+PAGE_TITLE = "Monthly View"
+PAGE_URL = "monthly"
+
+
 def monthly_view():
     """Monthly View page."""
     st.title("Monthly View")
 
-    # Load data from report and assign tiers
-    loader = rl.TierAssigner(ldr.Loader())
+    # Load processed data
+    loader = ldr.ProcessedLoader()
+    expenses_raw = tr.Inverter(fl.ExpensesFilter(loader))
+    incomes_raw = fl.IncomesFilter(loader)
 
     # Date filter
     # fixit add custom date range picker
@@ -43,8 +49,8 @@ def monthly_view():
 
     # Apply date filter
     all_data = date_filter(loader)
-    expenses = date_filter(tr.Inverter(fl.ExpensesFilter(loader)))
-    incomes = date_filter(fl.IncomesFilter(loader))
+    expenses = date_filter(expenses_raw)
+    incomes = date_filter(incomes_raw)
 
     st.subheader("Monthly Trend")
 
@@ -146,8 +152,4 @@ def monthly_view():
     )
 
 
-monthly_view_page = st.Page(
-    monthly_view,
-    title="Monthly View",
-    url_path="monthly",
-)
+monthly_view_page = st.Page(monthly_view, title=PAGE_TITLE, url_path=PAGE_URL)
