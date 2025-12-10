@@ -1,11 +1,10 @@
 """Data loaders."""
 
-import glob
-
 import pandas as pd
 
+from utils import get_latest_data_path
 from utils.data import Operator
-from utils.data.rules import TierAssigner
+from utils.data.rules import TierAssigner, TripBalanceCalculator
 
 
 class Loader(Operator):
@@ -13,19 +12,13 @@ class Loader(Operator):
 
     def __init__(self):
         """Initialize the data loader."""
-        path = self._get_latest_data_path()
-        self._data = pd.read_excel(path, engine="openpyxl")
+        self._data = pd.read_excel(
+            get_latest_data_path(), sheet_name="Receitas e Despesas", engine="openpyxl"
+        )
 
     @property
     def data(self) -> pd.DataFrame:
         return self._data
-
-    def _get_latest_data_path(self) -> str:
-        """Get the latest data path."""
-        files = glob.glob("data/????????.xlsx")
-        if not files:
-            raise FileNotFoundError("No data files found in 'data/' directory.")
-        return max(files)
 
 
 class PreProcessedLoader(Operator):
@@ -65,7 +58,9 @@ class ProcessedLoader(Operator):
     def __init__(self):
         """Initialize the processed data loader."""
         loader = Loader()
-        self._processed_loader = TierAssigner(PreProcessedLoader(loader))
+        self._processed_loader = TripBalanceCalculator(
+            TierAssigner(PreProcessedLoader(loader))
+        )
 
     @property
     def data(self) -> pd.DataFrame:
