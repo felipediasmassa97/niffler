@@ -13,4 +13,6 @@ app = st.navigation(
     ],
 )
 
+# fixit validate all calculations
+
 app.run()

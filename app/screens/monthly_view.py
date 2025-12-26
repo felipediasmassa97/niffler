@@ -24,7 +24,7 @@ def monthly_view():
     incomes_raw = fl.IncomesFilter(loader)
 
     # Date filter
-    # fixit add custom date range picker
+    # fixit add custom date range picker (long-term)
     cmp_date_filter = st.selectbox(
         "Date Range",
         options=[
@@ -85,7 +85,7 @@ def monthly_view():
     )
 
     # Per-tier expenses breakdown
-    # fixit add custom colors for tiers
+    # fixit add custom colors for tiers (long-term)
     st.plotly_chart(
         ch.SimpleBarChart(
             operator=agg.MonthlyTierAggregator(expenses),
@@ -108,6 +108,19 @@ def monthly_view():
         ).chart
     )
 
+    # Per-tier incomes breakdown
+    # fixit add custom colors for tiers (long-term)
+    st.plotly_chart(
+        ch.SimpleBarChart(
+            operator=agg.MonthlyTierAggregator(incomes),
+            column_x="Month",
+            column_y="Value",
+            column_cat="Tier",
+            column_cat_orders={"Tier": ["Fixed", "Variable", "Lifestyle"]},
+            title="Monthly Incomes by Tier",
+        ).chart
+    )
+
     # Per-category incomes breakdown
     st.plotly_chart(
         ch.SimpleBarChart(
@@ -122,7 +135,7 @@ def monthly_view():
     st.subheader("Period Summary")
 
     # Per-tier expenses breakdown
-    # fixit add custom colors for tiers
+    # fixit add custom colors for tiers (long-term)
     st.plotly_chart(
         ch.SimpleBarChart(
             operator=agg.TierAggregator(expenses),
@@ -140,6 +153,18 @@ def monthly_view():
             column_x="Category",
             column_y="Value",
             title="All Expenses by Category",
+        ).chart
+    )
+
+    # Per-tier incomes breakdown
+    # fixit add custom colors for tiers (long-term)
+    st.plotly_chart(
+        ch.SimpleBarChart(
+            operator=agg.TierAggregator(incomes),
+            column_x="Tier",
+            column_y="Value",
+            column_cat_orders={"Tier": ["Fixed", "Variable", "Lifestyle"]},
+            title="All Incomes by Tier",
         ).chart
     )
 

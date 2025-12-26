@@ -38,7 +38,7 @@ class TierAssigner(Operator):
         """Assign tiers for income entries."""
 
         # Specific cases
-        # fixit evaluate fixed and variable differentiation for salary
+        # fixit evaluate fixed and variable differentiation for salary (long-term)
 
         # General per-category assignment
         return {
@@ -50,6 +50,8 @@ class TierAssigner(Operator):
 
     def _assign_tiers_expense(self, category: str, description: str) -> bool:
         """Assign tiers for expense entries."""
+
+        # fixit add rule for travel, when tag = Work -> category = Variable
 
         # Specific cases
         if category == "Education" and "medcurso" in description:
