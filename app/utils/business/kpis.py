@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 import streamlit as st
 
+from utils.operators import Operator
+
 
 # fixit add KPIs
 
@@ -41,6 +43,7 @@ import streamlit as st
 
 # Incomes Breakdown:
 # - Percentage of fixed income against total income
+# - Top 3 income categories (consider only expenses matching fixed tier)
 
 # Expenses Breakdown:
 # - Percentage of lifestyle expenses against total income
@@ -73,6 +76,29 @@ import streamlit as st
 # -
 
 
+class KpiCalculator:
+    """KPI calculator."""
+
+    def __init__(self, operator: Operator):
+        self._data = operator.data
+
+    def get_total_income(self):
+        """Get total income."""
+        return self._data[self._data["Value"] > 0]["Value"].sum()
+
+    def get_total_expenses(self):
+        """Get total expenses."""
+        return self._data[self._data["Value"] < 0]["Value"].sum()
+
+    def get_net_income(self):
+        """Get net income."""
+        return self._data["Value"].sum()
+
+    def get_net_income_percentage(self):
+        """Get net income percentage."""
+        return self.get_net_income() / (self.get_total_income() + 1e-5)
+
+
 @dataclass
 class KpiCard:
     """KPI card."""
@@ -98,10 +124,11 @@ class KpiCard:
             """
             <style>
             .kpi-card {
+                margin: 0px 0px 24px 0px;
                 border: 1px solid rgba(49, 51, 63, 0.2);
                 border-radius: 14px;
                 padding: 16px;
-                background: rgba(255,255,255,0.03);
+                background: rgba(255, 255, 255, 0.03);
                 text-align: center;
             }
             .kpi-title {
@@ -132,6 +159,7 @@ class KpiCard:
             unsafe_allow_html=True,
         )
 
+        # fixit implement delta vs target (long-term)
         st.markdown(
             f"""
             <div class="kpi-card">
