@@ -101,6 +101,18 @@ class Last3MonthsFilter(DateFilter):
         )
 
 
+class Last6MonthsFilter(DateFilter):
+    """Last 6 months filter."""
+
+    def __init__(self, operator: Operator):
+        super().__init__(
+            operator,
+            start_date=pd.Timestamp(
+                pd.Timestamp.now() - pd.DateOffset(months=6)
+            ).replace(day=1),
+        )
+
+
 class Last12MonthsFilter(DateFilter):
     """Last 12 months filter."""
 

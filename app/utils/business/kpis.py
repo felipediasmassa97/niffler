@@ -79,24 +79,114 @@ from utils.operators import Operator
 class KpiCalculator:
     """KPI calculator."""
 
-    def __init__(self, operator: Operator):
+    def __init__(self, operator: Operator) -> None:
         self._data = operator.data
 
-    def get_total_income(self):
-        """Get total income."""
+    @property
+    def total_income(self) -> float:
+        """Total income."""
         return self._data[self._data["Value"] > 0]["Value"].sum()
 
-    def get_total_expenses(self):
-        """Get total expenses."""
-        return self._data[self._data["Value"] < 0]["Value"].sum()
+    @property
+    def total_expenses(self) -> float:
+        """Total expenses."""
+        return abs(self._data[self._data["Value"] < 0]["Value"].sum())
 
-    def get_net_income(self):
-        """Get net income."""
-        return self._data["Value"].sum()
+    @property
+    def net_income(self) -> float:
+        """Net income."""
+        return self.total_income - self.total_expenses
 
-    def get_net_income_percentage(self):
-        """Get net income percentage."""
-        return self.get_net_income() / (self.get_total_income() + 1e-5)
+    @property
+    def net_income_perc(self) -> float:
+        """Net income percentage."""
+        return self.net_income / (self.total_income + 1e-5)
+
+    @property
+    def fixed_income(self) -> float:
+        """Fixed income."""
+        return self._data[(self._data["Value"] > 0) & (self._data["Tier"] == "Fixed")][
+            "Value"
+        ].sum()
+
+    @property
+    def fixed_income_perc(self) -> float:
+        """Fixed income percentage."""
+        return self.fixed_income / (self.total_income + 1e-5)
+
+    @property
+    def fixed_expenses(self) -> float:
+        """Fixed expenses."""
+        return abs(
+            self._data[(self._data["Value"] < 0) & (self._data["Tier"] == "Fixed")][
+                "Value"
+            ].sum()
+        )
+
+    @property
+    def fixed_expenses_perc(self) -> float:
+        """Fixed expenses percentage."""
+        return self.fixed_expenses / (self.total_income + 1e-5)
+
+    @property
+    def variable_expenses(self) -> float:
+        """Variable expenses."""
+        return abs(
+            self._data[(self._data["Value"] < 0) & (self._data["Tier"] == "Variable")][
+                "Value"
+            ].sum()
+        )
+
+    @property
+    def variable_expenses_perc(self) -> float:
+        """Variable expenses percentage."""
+        return self.variable_expenses / (self.total_income + 1e-5)
+
+    @property
+    def lifestyle_expenses(self) -> float:
+        """Lifestyle expenses."""
+        return abs(
+            self._data[(self._data["Value"] < 0) & (self._data["Tier"] == "Lifestyle")][
+                "Value"
+            ].sum()
+        )
+
+    @property
+    def lifestyle_expenses_perc(self) -> float:
+        """Lifestyle expenses percentage."""
+        return self.lifestyle_expenses / (self.total_income + 1e-5)
+
+
+class KpiTrendsCalculator:
+    """KPI trends calculator."""
+
+    def __init__(
+        self, kpi_calc_current: KpiCalculator, kpi_calc_previous: KpiCalculator
+    ) -> None:
+        self._kpi_calc_current = kpi_calc_current
+        self._kpi_calc_previous = kpi_calc_previous
+
+    @property
+    def income_increase_perc(self) -> float:
+        """Income increase percentage."""
+        return (
+            self._kpi_calc_current.total_income - self._kpi_calc_previous.total_income
+        ) / (abs(self._kpi_calc_previous.total_income) + 1e-5)
+
+    @property
+    def expenses_increase_perc(self) -> float:
+        """Expenses increase percentage."""
+        return (
+            self._kpi_calc_current.total_expenses
+            - self._kpi_calc_previous.total_expenses
+        ) / (abs(self._kpi_calc_previous.total_expenses) + 1e-5)
+
+    @property
+    def expenses_inflation_perc(self) -> float:
+        """Expenses inflation percentage."""
+        return (
+            self.expenses_increase_perc - self.income_increase_perc
+        ) / self.income_increase_perc
 
 
 @dataclass
@@ -160,6 +250,7 @@ class KpiCard:
         )
 
         # fixit implement delta vs target (long-term)
+        # fixit remove target if not passed
         st.markdown(
             f"""
             <div class="kpi-card">
