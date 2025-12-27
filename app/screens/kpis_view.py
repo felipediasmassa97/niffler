@@ -11,12 +11,22 @@ from utils.operators import loader as ldr
 PAGE_TITLE = "KPIs View"
 PAGE_URL = "kpis"
 
-# fixit remove subtitle in all (redundant) and add default = ""
-
 
 def kpis_view():
     """KPIs View page."""
     st.title("KPIs View")
+
+    # Date filter
+    # fixit add custom date range picker (long-term)
+    cmp_date_filter = st.selectbox(
+        "Date Range",
+        options=[
+            {"label": "This Month", "filter": fl.ThisMonthFilter},
+        ],
+        index=0,
+        format_func=lambda x: x["label"],
+    )
+    date_filter = cmp_date_filter["filter"]
 
     # Load processed data
     loader = ldr.ProcessedLoader()
@@ -26,7 +36,7 @@ def kpis_view():
         loader = rl.Diluter(loader)
 
     # Apply date filter
-    date_filter = fl.ThisMonthFilter(loader)
+    date_filter = date_filter(loader)
 
     # Instantiate KPI calculators
     calc = kp.KpiCalculator(date_filter)
@@ -48,19 +58,11 @@ def kpis_view():
 
     cols = st.columns(2)
     with cols[0]:
-        kp.CurrencyKpiCard(
-            title="Total Income", subtitle="This month", value=calc.total_income
-        ).card()
-        kp.CurrencyKpiCard(
-            title="Net Income", subtitle="This month", value=calc.net_income
-        ).card()
+        kp.CurrencyKpiCard(title="Total Income", value=calc.total_income).card()
+        kp.CurrencyKpiCard(title="Net Income", value=calc.net_income).card()
     with cols[1]:
-        kp.CurrencyKpiCard(
-            title="Total Expenses", subtitle="This month", value=calc.total_expenses
-        ).card()
-        kp.PercentageKpiCard(
-            title="Net Income (%)", subtitle="This month", value=calc.net_income_perc
-        ).card()
+        kp.CurrencyKpiCard(title="Total Expenses", value=calc.total_expenses).card()
+        kp.PercentageKpiCard(title="Net Income (%)", value=calc.net_income_perc).card()
 
     st.header("Time Trends")
 
@@ -119,16 +121,10 @@ def kpis_view():
     st.subheader("Fixed Income")
     cols = st.columns(2)
     with cols[0]:
-        kp.CurrencyKpiCard(
-            title="Fixed Income",
-            subtitle="This month",
-            value=calc.fixed_income,
-        ).card()
+        kp.CurrencyKpiCard(title="Fixed Income", value=calc.fixed_income).card()
     with cols[1]:
         kp.PercentageKpiCard(
-            title="Fixed Income (% Income)",
-            subtitle="This month",
-            value=calc.fixed_income_perc,
+            title="Fixed Income (% Income)", value=calc.fixed_income_perc
         ).card()
 
     inc_cats = calc_cat.income_categories_sorted
@@ -141,14 +137,10 @@ def kpis_view():
 
             cols = st.columns(2)
             with cols[0]:
-                kp.CurrencyKpiCard(
-                    title="Income", subtitle="This month", value=inc_by_cat[category]
-                ).card()
+                kp.CurrencyKpiCard(title="Income", value=inc_by_cat[category]).card()
             with cols[1]:
                 kp.PercentageKpiCard(
-                    title="Income (%)",
-                    subtitle="This month",
-                    value=inc_perc_by_cat[category],
+                    title="Income (%)", value=inc_perc_by_cat[category]
                 ).card()
 
     st.header("Expenses Breakdown")
@@ -160,24 +152,16 @@ def kpis_view():
     cols = st.columns(3)
     for idx_cat, category in enumerate(exp_cats[:3]):
         with cols[idx_cat]:
-            kp.CurrencyKpiCard(
-                title=category, subtitle="This month", value=exp_by_cat[category]
-            ).card()
+            kp.CurrencyKpiCard(title=category, value=exp_by_cat[category]).card()
 
     st.subheader("Fixed Expenses")
 
     cols = st.columns(2)
     with cols[0]:
-        kp.CurrencyKpiCard(
-            title="Fixed Expenses",
-            subtitle="This month",
-            value=calc.fixed_expenses,
-        ).card()
+        kp.CurrencyKpiCard(title="Fixed Expenses", value=calc.fixed_expenses).card()
     with cols[1]:
         kp.PercentageKpiCard(
-            title="Fixed Expenses (% Income)",
-            subtitle="This month",
-            value=calc.fixed_expenses_perc,
+            title="Fixed Expenses (% Income)", value=calc.fixed_expenses_perc
         ).card()
 
     exp_fixed_cats = calc_cat.expenses_fixed_categories_sorted
@@ -187,24 +171,18 @@ def kpis_view():
     cols = st.columns(3)
     for idx_cat, category in enumerate(exp_fixed_cats[:3]):
         with cols[idx_cat]:
-            kp.CurrencyKpiCard(
-                title=category, subtitle="This month", value=exp_fixed_by_cat[category]
-            ).card()
+            kp.CurrencyKpiCard(title=category, value=exp_fixed_by_cat[category]).card()
 
     st.subheader("Variable Expenses")
 
     cols = st.columns(2)
     with cols[0]:
         kp.CurrencyKpiCard(
-            title="Variable Expenses",
-            subtitle="This month",
-            value=calc.variable_expenses,
+            title="Variable Expenses", value=calc.variable_expenses
         ).card()
     with cols[1]:
         kp.PercentageKpiCard(
-            title="Variable Expenses (% Income)",
-            subtitle="This month",
-            value=calc.variable_expenses_perc,
+            title="Variable Expenses (% Income)", value=calc.variable_expenses_perc
         ).card()
 
     exp_variable_cats = calc_cat.expenses_variable_categories_sorted
@@ -215,9 +193,7 @@ def kpis_view():
     for idx_cat, category in enumerate(exp_variable_cats[:3]):
         with cols[idx_cat]:
             kp.CurrencyKpiCard(
-                title=category,
-                subtitle="This month",
-                value=exp_variable_by_cat[category],
+                title=category, value=exp_variable_by_cat[category]
             ).card()
 
     st.subheader("Lifestyle Expenses")
@@ -225,15 +201,11 @@ def kpis_view():
     cols = st.columns(2)
     with cols[0]:
         kp.CurrencyKpiCard(
-            title="Lifestyle Expenses",
-            subtitle="This month",
-            value=calc.lifestyle_expenses,
+            title="Lifestyle Expenses", value=calc.lifestyle_expenses
         ).card()
     with cols[1]:
         kp.PercentageKpiCard(
-            title="Lifestyle Expenses (% Income)",
-            subtitle="This month",
-            value=calc.lifestyle_expenses_perc,
+            title="Lifestyle Expenses (% Income)", value=calc.lifestyle_expenses_perc
         ).card()
 
     exp_lifestyle_cats = calc_cat.expenses_lifestyle_categories_sorted
@@ -244,9 +216,7 @@ def kpis_view():
     for idx_cat, category in enumerate(exp_lifestyle_cats[:3]):
         with cols[idx_cat]:
             kp.CurrencyKpiCard(
-                title=category,
-                subtitle="This month",
-                value=exp_lifestyle_by_cat[category],
+                title=category, value=exp_lifestyle_by_cat[category]
             ).card()
 
     st.subheader("Category Breakdown")
@@ -258,36 +228,26 @@ def kpis_view():
             cols = st.columns(3)
             with cols[0]:
                 kp.CurrencyKpiCard(
-                    title="Actual Expense",
-                    subtitle="This month",
-                    value=exp_by_cat[category],
+                    title="Actual Expense", value=exp_by_cat[category]
                 ).card()
             with cols[1]:
                 pass
                 # fixit add "Budget Overrun (%)"
-                kp.PercentageKpiCard(
-                    title="Budget Overrun (%)", subtitle="This month", value=None
-                ).card()
+                kp.PercentageKpiCard(title="Budget Overrun (%)", value=None).card()
             with cols[2]:
                 pass
                 # fixit add "Forecast Expense" (if this pace continues, total expenses will be XXX)
-                kp.CurrencyKpiCard(
-                    title="Forecast Expense", subtitle="This month", value=None
-                ).card()
+                kp.CurrencyKpiCard(title="Forecast Expense", value=None).card()
 
     st.subheader("Travel")
 
     # fixit implement travel KPIs dynamically
-    # fixit always evaluate budget overrun KPIs yearly, not monthly (long-term)
+    # fixit always evaluate budget overrun KPIs yearly, not monthly (long-term) (instantiate a KpiCalculator with ThisYearFilter)
     cols = st.columns(2)
     with cols[0]:
-        kp.CurrencyKpiCard(
-            title="Budget Overrun", subtitle="This year", value=None
-        ).card()
+        kp.CurrencyKpiCard(title="Budget Overrun", value=None).card()
     with cols[1]:
-        kp.PercentageKpiCard(
-            title="Budget Overrun (%)", subtitle="This year", value=None
-        ).card()
+        kp.PercentageKpiCard(title="Budget Overrun (%)", value=None).card()
 
 
 kpis_view_page = st.Page(kpis_view, title=PAGE_TITLE, url_path=PAGE_URL)

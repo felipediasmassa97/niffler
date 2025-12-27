@@ -300,9 +300,9 @@ class KpiCard:
     """KPI card."""
 
     title: str
-    subtitle: str
-    kind: str
-    value: float
+    subtitle: str = ""
+    kind: str = "currency"  # "currency" | "percentage"
+    value: float = None
     target: float = None
 
     def card(self) -> None:
@@ -373,7 +373,9 @@ class KpiCard:
 class CurrencyKpiCard(KpiCard):
     """Currency KPI card."""
 
-    def __init__(self, title: str, subtitle: str, value: float, target: float = None):
+    def __init__(
+        self, title: str, subtitle: str = "", value: float = None, target: float = None
+    ):
         super().__init__(
             title=title,
             subtitle=subtitle,
@@ -386,7 +388,9 @@ class CurrencyKpiCard(KpiCard):
 class PercentageKpiCard(KpiCard):
     """Percentage KPI card."""
 
-    def __init__(self, title: str, subtitle: str, value: float, target: float = None):
+    def __init__(
+        self, title: str, subtitle: str = "", value: float = None, target: float = None
+    ):
         super().__init__(
             title=title,
             subtitle=subtitle,
