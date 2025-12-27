@@ -2,6 +2,7 @@
 
 import streamlit as st
 
+from screens.kpis_view import kpis_view_page
 from screens.monthly_view import monthly_view_page
 from screens.yearly_view import yearly_view_page
 
@@ -10,6 +11,7 @@ app = st.navigation(
     [
         monthly_view_page,
         yearly_view_page,
+        kpis_view_page,
     ],
 )
 
