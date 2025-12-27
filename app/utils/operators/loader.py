@@ -3,8 +3,8 @@
 import pandas as pd
 
 from utils import get_latest_data_path
-from utils.data import Operator
-from utils.data.rules import TierAssigner, TripBalanceCalculator
+from utils.business.rules import TierAssigner, TripBalanceCalculator
+from utils.operators import Operator
 
 
 class Loader(Operator):

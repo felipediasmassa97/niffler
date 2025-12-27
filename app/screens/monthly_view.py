@@ -3,11 +3,11 @@
 import streamlit as st
 
 from utils import charts as ch
-from utils.data import aggregator as agg
-from utils.data import filter as fl
-from utils.data import loader as ldr
-from utils.data import rules as rl
-from utils.data import transformer as tr
+from utils.business import rules as rl
+from utils.operators import aggregator as agg
+from utils.operators import filter as fl
+from utils.operators import loader as ldr
+from utils.operators import transformer as tr
 
 
 PAGE_TITLE = "Monthly View"
@@ -44,8 +44,6 @@ def monthly_view():
     # Data dilution toggle
     if st.checkbox("Dilute Costs", value=True):
         loader = rl.Diluter(loader)
-
-    st.write(loader.data)
 
     # Apply date filter
     all_data = date_filter(loader)
@@ -177,6 +175,8 @@ def monthly_view():
             title="All Incomes by Category",
         ).chart
     )
+
+    st.write(loader.data)
 
 
 monthly_view_page = st.Page(monthly_view, title=PAGE_TITLE, url_path=PAGE_URL)

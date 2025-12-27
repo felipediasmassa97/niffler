@@ -7,7 +7,7 @@ import pandas as pd
 from unidecode import unidecode
 
 from utils import get_latest_data_path
-from utils.data import Operator
+from utils.operators import Operator
 
 
 TRIP_FUNDS_ACCOUNT = "Trip Funds"

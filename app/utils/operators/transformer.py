@@ -5,7 +5,7 @@ from typing import Any
 
 import pandas as pd
 
-from utils.data import Operator
+from utils.operators import Operator
 
 
 class Transformer(Operator, ABC):

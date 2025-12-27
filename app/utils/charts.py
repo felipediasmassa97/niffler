@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import plotly.express as px
 import plotly.graph_objects as go
 
-from utils.data import Operator
+from utils.operators import Operator
 
 # fixit add custom colors for categories (long-term)
 # fixit make fancier charts (fine formatting on tooltip, for example) (long-term)

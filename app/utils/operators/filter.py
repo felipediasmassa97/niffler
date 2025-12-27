@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from utils.data import Operator
+from utils.operators import Operator
 
 
 class Filter(Operator):
