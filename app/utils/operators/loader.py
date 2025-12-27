@@ -3,7 +3,8 @@
 import pandas as pd
 
 from utils import get_latest_data_path
-from utils.business.rules import TierAssigner, TripBalanceCalculator
+from utils.business.tiers import TierAssigner
+from utils.business.travel import TripBalanceCalculator
 from utils.operators import Operator
 
 

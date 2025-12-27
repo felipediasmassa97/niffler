@@ -3,7 +3,7 @@
 import streamlit as st
 
 from utils.business import kpis as kp
-from utils.business import rules as rl
+from utils.business.dilution import Diluter
 from utils.operators import filter as fl
 from utils.operators import loader as ldr
 
@@ -33,7 +33,7 @@ def kpis_view():
 
     # Data dilution toggle
     if st.checkbox("Dilute Costs", value=True):
-        loader = rl.Diluter(loader)
+        loader = Diluter(loader)
 
     # Apply date filter
     date_filter = date_filter(loader)

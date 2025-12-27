@@ -3,7 +3,7 @@
 import streamlit as st
 
 from utils import charts as ch
-from utils.business import rules as rl
+from utils.business.dilution import Diluter
 from utils.operators import aggregator as agg
 from utils.operators import filter as fl
 from utils.operators import loader as ldr
@@ -41,7 +41,7 @@ def monthly_view():
 
     # Data dilution toggle
     if st.checkbox("Dilute Costs", value=True):
-        loader = rl.Diluter(loader)
+        loader = Diluter(loader)
 
     # Split data into expenses and incomes
     expenses_raw = tr.Inverter(fl.ExpensesFilter(loader))

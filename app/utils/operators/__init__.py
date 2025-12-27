@@ -1,4 +1,4 @@
-"""Data utils."""
+"""Data operators utils."""
 
 from abc import ABC, abstractmethod
 
