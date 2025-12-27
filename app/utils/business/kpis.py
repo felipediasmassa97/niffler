@@ -189,6 +189,112 @@ class KpiTrendsCalculator:
         ) / self.income_increase_perc
 
 
+class KpiCategoryCalculator(KpiCalculator):
+    """KPI category calculator."""
+
+    def sort_categories(self, values_by_category: dict[str, float]) -> list[str]:
+        """Sort categories by value, descending."""
+        items_sorted = sorted(
+            values_by_category.items(), key=lambda item: item[1], reverse=True
+        )
+        return [item[0] for item in items_sorted]
+
+    @property
+    def income_categories_sorted(self) -> list[str]:
+        """Income categories sorted by value, descending."""
+        return self.sort_categories(self.income_by_category)
+
+    @property
+    def income_by_category(self) -> dict[str, float]:
+        """Income by category."""
+        income = self._data[self._data["Value"] > 0]
+        return {
+            category: income[income["Category"] == category]["Value"].sum()
+            for category in income["Category"].unique()
+        }
+
+    @property
+    def income_perc_by_category(self) -> dict[str, float]:
+        """Income percentage by category."""
+        income = self._data[self._data["Value"] > 0]
+        total_income = self.total_income + 1e-5
+        return {
+            category: income[income["Category"] == category]["Value"].sum()
+            / total_income
+            for category in income["Category"].unique()
+        }
+
+    @property
+    def expenses_categories_sorted(self) -> list[str]:
+        """Expenses categories sorted by value, descending."""
+        return self.sort_categories(self.expenses_by_category)
+
+    @property
+    def expenses_by_category(self) -> dict[str, float]:
+        """Expenses by category."""
+        expenses = self._data[self._data["Value"] < 0]
+        return {
+            category: abs(expenses[expenses["Category"] == category]["Value"].sum())
+            for category in expenses["Category"].unique()
+        }
+
+    @property
+    def expenses_fixed_categories_sorted(self) -> list[str]:
+        """Fixed expenses categories sorted by value, descending."""
+        return self.sort_categories(self.expenses_fixed_by_category)
+
+    @property
+    def expenses_fixed_by_category(self) -> dict[str, float]:
+        """Fixed expenses by category."""
+        expenses = self._data[self._data["Value"] < 0]
+        return {
+            category: abs(
+                expenses[
+                    (expenses["Category"] == category) & (expenses["Tier"] == "Fixed")
+                ]["Value"].sum()
+            )
+            for category in expenses["Category"].unique()
+        }
+
+    @property
+    def expenses_variable_categories_sorted(self) -> list[str]:
+        """Variable expenses categories sorted by value, descending."""
+        return self.sort_categories(self.expenses_variable_by_category)
+
+    @property
+    def expenses_variable_by_category(self) -> dict[str, float]:
+        """Variable expenses by category."""
+        expenses = self._data[self._data["Value"] < 0]
+        return {
+            category: abs(
+                expenses[
+                    (expenses["Category"] == category)
+                    & (expenses["Tier"] == "Variable")
+                ]["Value"].sum()
+            )
+            for category in expenses["Category"].unique()
+        }
+
+    @property
+    def expenses_lifestyle_categories_sorted(self) -> list[str]:
+        """Lifestyle expenses categories sorted by value, descending."""
+        return self.sort_categories(self.expenses_lifestyle_by_category)
+
+    @property
+    def expenses_lifestyle_by_category(self) -> dict[str, float]:
+        """Lifestyle expenses by category."""
+        expenses = self._data[self._data["Value"] < 0]
+        return {
+            category: abs(
+                expenses[
+                    (expenses["Category"] == category)
+                    & (expenses["Tier"] == "Lifestyle")
+                ]["Value"].sum()
+            )
+            for category in expenses["Category"].unique()
+        }
+
+
 @dataclass
 class KpiCard:
     """KPI card."""
@@ -204,10 +310,10 @@ class KpiCard:
         assert self.kind in {"currency", "percentage"}
 
         if self.kind == "currency":
-            value_actual = f"R$ {self.value:,.0f}"
+            value_actual = f"R$ {self.value:,.0f}" if self.value is not None else None
             value_target = f"R$ {self.target:,.0f}" if self.target is not None else None
         if self.kind == "percentage":
-            value_actual = f"{self.value:.1%}"
+            value_actual = f"{self.value:.1%}" if self.value is not None else None
             value_target = f"{self.target:.1%}" if self.target is not None else None
 
         st.markdown(
@@ -269,7 +375,11 @@ class CurrencyKpiCard(KpiCard):
 
     def __init__(self, title: str, subtitle: str, value: float, target: float = None):
         super().__init__(
-            title=title, subtitle=subtitle, kind="currency", value=value, target=target
+            title=title,
+            subtitle=subtitle,
+            kind="currency",
+            value=value,
+            target=target,
         )
 
 
