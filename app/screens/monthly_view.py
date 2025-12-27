@@ -18,11 +18,6 @@ def monthly_view():
     """Monthly View page."""
     st.title("Monthly View")
 
-    # Load processed data
-    loader = ldr.ProcessedLoader()
-    expenses_raw = tr.Inverter(fl.ExpensesFilter(loader))
-    incomes_raw = fl.IncomesFilter(loader)
-
     # Date filter
     # fixit add custom date range picker (long-term)
     cmp_date_filter = st.selectbox(
@@ -41,9 +36,16 @@ def monthly_view():
     )
     date_filter = cmp_date_filter["filter"]
 
+    # Load processed data
+    loader = ldr.ProcessedLoader()
+
     # Data dilution toggle
     if st.checkbox("Dilute Costs", value=True):
         loader = rl.Diluter(loader)
+
+    # Split data into expenses and incomes
+    expenses_raw = tr.Inverter(fl.ExpensesFilter(loader))
+    incomes_raw = fl.IncomesFilter(loader)
 
     # Apply date filter
     all_data = date_filter(loader)
