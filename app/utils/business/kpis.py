@@ -12,38 +12,37 @@ import streamlit as st
 # List of KPIs to track
 # (consolidate in new screen, not in monthly or yearly view)
 
-# Show in 3 sections (always show the 3 together):
-# - This month
-# - Last 3 months
-# - This year
+# Show in 2 sections (section in the left = default filter; section in the right = optional filter):
+# - This month (default)
 # - Enable custom date range picker (last year, last 6 months, last 3 months, last month, this month, this year, all time)
 
 # Show in two flavors:
 # - Projected (default)
 # - Actual
+# fixit implement projected expenses and incomes (consider pending incomes - more predictable - and pending expenses - only the ones already accounted for)
 
 # Define target for each KPI
 # fixit implement target visualization
 
-# General:
+# Big Picture:
 # - Total income
 # - Total expenses
-
-# Net Income:
 # - Net Income Amount (absolute value)
 # - Net Income Percentage (Net Income / Total Income)
 #   - Target: Beginner = 10%-20%, Ideal = 25%-40%, Elite = 50%+
-# - Expenses Inflation
-#   - Income inflation vs expenses inflation (which date range?)
-#   - Target: Beginner = <5%, Ideal = <3%, Elite = <0%
 
-# Income:
-# - Salary increase vs last period (how to measure this? which date range?)
+# Time Trends:
+# - Expenses Inflation
+#   - Income inflation vs expenses inflation: this time range (filter) vs last 3 / 6 / 12 months (show all 3 to see different trends)
+#   - Target: Beginner = <5%, Ideal = <3%, Elite = <0%
+# - Incomes increase: this time range (filter) vs last 3 / 6 / 12 months (show all 3 to see different trends)
+# - Expenses increase: this time range (filter) vs last 3 / 6 / 12 months (show all 3 to see different trends)
+#   - Target: ???
+
+# Incomes Breakdown:
 # - Percentage of fixed income against total income
 
-# Expenses:
-# - Expenses increase vs last period (how to measure this? which date range?)
-#   - Target: ???
+# Expenses Breakdown:
 # - Percentage of lifestyle expenses against total income
 #   - Target for lifestyle: Beginner = X%, Ideal = Y%
 # - Top 3 fixed expense categories (consider only expenses matching fixed tier)
