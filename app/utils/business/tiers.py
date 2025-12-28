@@ -20,14 +20,18 @@ class TierAssigner(Operator):
 
     def _assign_tiers(self, row: pd.Series) -> str:
         """Assign tiers to the given data."""
-        category = row["Category"]
+        category = self._standardize_string(row["Category"])
         description = self._standardize_string(row["Description"])
+        tags = [self._standardize_string(tag) for tag in row["Tags"]]
         value = row["Value"]
-        if value > 0:
-            return self._assign_tiers_income(category, description)
-        return self._assign_tiers_expense(category, description)
 
-    def _assign_tiers_income(self, category: str, description: str) -> bool:
+        if value > 0:
+            return self._assign_tiers_income(category, description, tags)
+        return self._assign_tiers_expense(category, description, tags)
+
+    def _assign_tiers_income(
+        self, category: str, description: str, tags: list[str]
+    ) -> bool:
         """Assign tiers for income entries."""
 
         # Specific cases
@@ -35,63 +39,67 @@ class TierAssigner(Operator):
 
         # General per-category assignment
         return {
-            "Gift": "Variable",
-            "Refund": "Variable",
-            "Rewards": "Variable",
-            "Salary": "Fixed",
+            "gift": "Variable",
+            "refund": "Variable",
+            "rewards": "Variable",
+            "salary": "Fixed",
         }[category]
 
-    def _assign_tiers_expense(self, category: str, description: str) -> bool:
+    def _assign_tiers_expense(
+        self, category: str, description: str, tags: list[str]
+    ) -> bool:
         """Assign tiers for expense entries."""
 
         # fixit add rule for travel, when tag = Work -> category = Variable
 
         # Specific cases
-        if category == "Education" and "medcurso" in description:
+        if category == "education" and "medcurso" in description:
             return "Fixed"
-        if category == "Education" and "pos graduacao" in description:
+        if category == "education" and "pos graduacao" in description:
             return "Fixed"
-        if category == "Health" and "bradesco saude" in description:
+        if category == "health" and "bradesco saude" in description:
             return "Fixed"
-        if category == "Work" and "crea" in description:
+        if category == "travel" and "work" in tags:
+            return "Variable"
+        if category == "work" and "crea" in description:
             return "Fixed"
-        if category == "Work" and "crm" in description:
+        if category == "work" and "crm" in description:
             return "Fixed"
-        if category == "Work" and "chatgpt" in description:
+        if category == "work" and "chatgpt" in description:
             return "Fixed"
-        if category == "Work" and "contabileasy mensalidade" in description:
+        if category == "work" and "contabileasy mensalidade" in description:
             return "Fixed"
-        if category == "Work" and "darf" in description:
+        if category == "work" and "darf" in description:
             return "Fixed"
-        if category == "Work" and "whitebook" in description:
+        if category == "work" and "whitebook" in description:
             return "Fixed"
 
         # General per-category assignment
         return {
-            "Car": "Fixed",
-            "Commute": "Fixed",
-            "Donation": "Lifestyle",
-            "Education": "Variable",
-            "Gift": "Lifestyle",
-            "Health": "Variable",
-            "High Costs": "Variable",
-            "Home": "Variable",
-            "Maintenance": "Variable",
-            "Personal Felp": "Lifestyle",
-            "Personal Lena": "Lifestyle",
-            "Pharmacy": "Variable",
-            "Physical": "Variable",
-            "Recreation": "Lifestyle",
-            "Rent": "Fixed",
-            "Restaurant": "Lifestyle",
-            "Services": "Fixed",
-            "Subscriptions": "Lifestyle",
-            "Supermarket": "Fixed",
-            "Transport": "Variable",
-            "Travel": "Lifestyle",
-            "Unknown": "Variable",
-            "Work": "Variable",
-            "Work Lunch": "Variable",
+            "car": "Fixed",
+            "commute": "Fixed",
+            "donation": "Lifestyle",
+            "education": "Variable",
+            "gift": "Lifestyle",
+            "health": "Variable",
+            "high costs": "Variable",
+            "home": "Variable",
+            "maintenance": "Variable",
+            "personal felp": "Lifestyle",
+            "personal lena": "Lifestyle",
+            "pharmacy": "Variable",
+            "physical": "Variable",
+            "recreation": "Lifestyle",
+            "rent": "Fixed",
+            "restaurant": "Lifestyle",
+            "services": "Fixed",
+            "subscriptions": "Lifestyle",
+            "supermarket": "Fixed",
+            "transport": "Variable",
+            "travel": "Lifestyle",
+            "unknown": "Variable",
+            "work": "Variable",
+            "work lunch": "Variable",
         }[category]
 
     def _standardize_string(self, s: str) -> str:

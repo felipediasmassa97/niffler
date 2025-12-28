@@ -50,6 +50,13 @@ class PreProcessedLoader(Operator):
         # Extract month from date
         data_["Month"] = data_["Date"].dt.to_period("M").dt.to_timestamp()
 
+        # Parse tags
+        data_["Tags"] = (
+            data_["Tags"]
+            .fillna("")
+            .apply(lambda x: [tag.strip() for tag in x.split(",")] if x else [])
+        )
+
         return data_
 
 

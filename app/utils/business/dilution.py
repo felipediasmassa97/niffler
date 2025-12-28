@@ -1,6 +1,7 @@
 """Dilution business rules."""
 
 import pandas as pd
+from unidecode import unidecode
 
 from utils.operators import Operator
 
@@ -30,7 +31,7 @@ class Diluter(Operator):
 
     def _assign_dilution(self, row: pd.Series) -> str:
         """Assign dilution to the given data."""
-        category = row["Category"]
+        category = self._standardize_string(row["Category"])
         value = row["Value"]
         if value > 0:
             return self._assign_dilution_income(category, value)
@@ -40,58 +41,58 @@ class Diluter(Operator):
         """Assign dilution for income entries."""
 
         # Specific cases
-        if category == "Refund" and value >= 500:
+        if category == "refund" and value >= 500:
             return True
 
         # General per-category assignment
         return {
-            "Gift": False,
-            "Refund": False,
-            "Rewards": True,
-            "Salary": True,
+            "gift": False,
+            "refund": False,
+            "rewards": True,
+            "salary": True,
         }[category]
 
     def _assign_dilution_expense(self, category: str, value: float) -> bool:
         """Assign dilution for expense entries."""
 
         # Specific cases
-        if category == "Car" and value >= 300:
+        if category == "car" and value >= 300:
             return True
-        if category == "Donation" and value >= 200:
+        if category == "donation" and value >= 200:
             return True
-        if category == "Home" and value >= 250:
+        if category == "home" and value >= 250:
             return True
-        if category == "Subscriptions" and value >= 60:
+        if category == "subscriptions" and value >= 60:
             return True
-        if category == "Work" and value >= 300:
+        if category == "work" and value >= 300:
             return True
 
         # General per-category assignment
         return {
-            "Car": False,
-            "Commute": False,
-            "Donation": False,
-            "Education": False,
-            "Gift": False,
-            "Health": False,
-            "High Costs": True,
-            "Home": False,
-            "Maintenance": True,
-            "Personal Felp": False,
-            "Personal Lena": False,
-            "Pharmacy": False,
-            "Physical": False,
-            "Recreation": False,
-            "Rent": False,
-            "Restaurant": False,
-            "Services": False,
-            "Subscriptions": False,
-            "Supermarket": False,
-            "Transport": False,
-            "Travel": True,
-            "Unknown": False,
-            "Work": False,
-            "Work Lunch": False,
+            "car": False,
+            "commute": False,
+            "donation": False,
+            "education": False,
+            "gift": False,
+            "health": False,
+            "high costs": True,
+            "home": False,
+            "maintenance": True,
+            "personal felp": False,
+            "personal lena": False,
+            "pharmacy": False,
+            "physical": False,
+            "recreation": False,
+            "rent": False,
+            "restaurant": False,
+            "services": False,
+            "subscriptions": False,
+            "supermarket": False,
+            "transport": False,
+            "travel": True,
+            "unknown": False,
+            "work": False,
+            "work lunch": False,
         }[category]
 
     def _dilute_costs(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -146,3 +147,7 @@ class Diluter(Operator):
         return [
             pd.Timestamp(year=date.year, month=month, day=1) for month in range(1, 13)
         ]
+
+    def _standardize_string(self, s: str) -> str:
+        """Standardize a string by removing accents and converting to lowercase."""
+        return unidecode(s).lower()
