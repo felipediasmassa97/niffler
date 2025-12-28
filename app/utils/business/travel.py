@@ -30,7 +30,6 @@ class TripBalanceCalculator(Operator):
     def __init__(self, operator: Operator) -> None:
         """Initialize the tier assigner."""
         self.raw_data = operator.data.copy()
-        self.years = range(2024, datetime.now().year + 1)
         self._data = self._adjust_data(self.raw_data)
 
     @property
@@ -46,7 +45,7 @@ class TripBalanceCalculator(Operator):
         data["Year"] = pd.to_datetime(data["Date"], format="%d/%m/%Y").dt.year
         return data
 
-    def _get_budget(self, year: int) -> float:
+    def get_budget(self, year: int) -> float:
         """Get trip budget from year N-1.
 
         Trip budget for year N is defined as the sum of all transfer transactions to "Trip Funds"
@@ -58,7 +57,7 @@ class TripBalanceCalculator(Operator):
             & (transfer_data["Year"] == year - 1)
         ].sum()["Value"]
 
-    def _sum_actuals(self, year: int) -> float:
+    def sum_actuals(self, year: int) -> float:
         """Sum actual trip expenses from year N.
 
         Trip actual expenses for year N are defined as the sum of all expenses in "Travel" category paid
@@ -71,9 +70,9 @@ class TripBalanceCalculator(Operator):
         ]
         return abs(travel_data["Value"].sum())
 
-    def _calculate_balance(self, year: int) -> float:
+    def calculate_balance(self, year: int) -> float:
         """Calculate the balance between budget and actual trip expenses in year N."""
-        return self._get_budget(year) - self._sum_actuals(year)
+        return self.get_budget(year) - self.sum_actuals(year)
 
     def _adjust_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """Adjust data to include trip balance.
@@ -84,7 +83,7 @@ class TripBalanceCalculator(Operator):
         data_ = data.copy()
 
         # Iterate over years to adjust data
-        for year in self.years:
+        for year in range(2024, datetime.now().year + 1):
             # Remove Trip Funds account's Travel expenses from year N
             data_ = data_[
                 ~(
@@ -99,7 +98,7 @@ class TripBalanceCalculator(Operator):
             balance_transaction = {
                 "Date": date,
                 "Description": f"Saldo Viagem {year}",
-                "Value": self._calculate_balance(year),
+                "Value": self.calculate_balance(year),
                 "Account": TRIP_FUNDS_ACCOUNT,
                 "Status": "Paid",
                 "Category": "Travel",

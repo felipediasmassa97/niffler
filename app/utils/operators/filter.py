@@ -61,8 +61,12 @@ class ThisYearFilter(DateFilter):
     def __init__(self, operator: Operator):
         super().__init__(
             operator,
-            start_date=pd.Timestamp(year=pd.Timestamp.now().year, month=1, day=1),
+            start_date=pd.Timestamp(year=self.year, month=1, day=1),
         )
+
+    @property
+    def year(self) -> int:
+        return pd.Timestamp.now().year
 
 
 class ThisMonthFilter(DateFilter):
@@ -131,9 +135,13 @@ class LastYearFilter(DateFilter):
     def __init__(self, operator: Operator):
         super().__init__(
             operator,
-            start_date=pd.Timestamp(year=pd.Timestamp.now().year - 1, month=1, day=1),
-            end_date=pd.Timestamp(year=pd.Timestamp.now().year - 1, month=12, day=31),
+            start_date=pd.Timestamp(year=self.year, month=1, day=1),
+            end_date=pd.Timestamp(year=self.year, month=12, day=31),
         )
+
+    @property
+    def year(self) -> int:
+        return pd.Timestamp.now().year - 1
 
 
 class AllTimeFilter(DateFilter):

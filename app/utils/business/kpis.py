@@ -4,7 +4,9 @@ from dataclasses import dataclass
 
 import streamlit as st
 
+from utils.business.travel import TripBalanceCalculator
 from utils.operators import Operator
+from utils.operators.filter import ThisYearFilter
 
 
 # fixit add KPIs
@@ -295,8 +297,33 @@ class KpiCategoryCalculator(KpiCalculator):
         }
 
 
+class KpiMainTripCalculator(KpiCalculator):
+    """KPI main trip calculator."""
+
+    def __init__(self, operator: Operator) -> None:
+        # Enforce this year filter for main trip
+        date_filter = ThisYearFilter(operator)
+        self.year = date_filter.year
+
+        self.trip_calc = TripBalanceCalculator(date_filter)
+
+        super().__init__(ThisYearFilter(operator))
+
+    @property
+    def budget_overrun(self) -> float:
+        """Budget overrun."""
+        return self.trip_calc.sum_actuals(self.year) - self.trip_calc.get_budget(
+            self.year
+        )
+
+    @property
+    def budget_overrun_perc(self) -> float:
+        """Budget overrun percentage."""
+        return self.budget_overrun / (self.trip_calc.get_budget(self.year) + 1e-5)
+
+
 @dataclass
-class KpiCard:
+class CardKpi:
     """KPI card."""
 
     title: str
@@ -370,7 +397,7 @@ class KpiCard:
         )
 
 
-class CurrencyKpiCard(KpiCard):
+class CardKpiCurrency(CardKpi):
     """Currency KPI card."""
 
     def __init__(
@@ -385,7 +412,7 @@ class CurrencyKpiCard(KpiCard):
         )
 
 
-class PercentageKpiCard(KpiCard):
+class CardKpiPercentage(CardKpi):
     """Percentage KPI card."""
 
     def __init__(
