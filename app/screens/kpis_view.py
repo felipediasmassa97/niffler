@@ -236,6 +236,7 @@ def kpis_view():
             with cols[2]:
                 pass
                 # fixit add "Forecast Expense" (if this pace continues, total expenses will be XXX)
+                # fixit only project if CATEGORY_MUST_PROJECT[category] is True, else "N/A"
                 CardKpiCurrency(title="Forecast Expense", value=None).card()
     st.subheader("Travel")
 

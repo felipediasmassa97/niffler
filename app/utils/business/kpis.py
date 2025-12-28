@@ -1,6 +1,7 @@
 """Data KPIs."""
 
 from dataclasses import dataclass
+from typing import Literal
 
 import streamlit as st
 
@@ -332,16 +333,20 @@ class CardKpi:
     value: float = None
     target: float = None
 
+    def _format_value(self, value: float | Literal["N/A"] | None) -> str:
+        """Format value."""
+        if value == "N/A":
+            return "N/A"
+        if self.kind == "currency":
+            return f"R$ {value:,.0f}" if value is not None else None
+        if self.kind == "percentage":
+            return f"{value:.1%}" if value is not None else None
+        raise ValueError(f"Unknown kind: {self.kind}")
+
     def card(self) -> None:
         """Card."""
-        assert self.kind in {"currency", "percentage"}
-
-        if self.kind == "currency":
-            value_actual = f"R$ {self.value:,.0f}" if self.value is not None else None
-            value_target = f"R$ {self.target:,.0f}" if self.target is not None else None
-        if self.kind == "percentage":
-            value_actual = f"{self.value:.1%}" if self.value is not None else None
-            value_target = f"{self.target:.1%}" if self.target is not None else None
+        value_actual = self._format_value(self.value)
+        value_target = self._format_value(self.target)
 
         st.markdown(
             """

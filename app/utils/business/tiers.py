@@ -50,8 +50,6 @@ class TierAssigner(Operator):
     ) -> bool:
         """Assign tiers for expense entries."""
 
-        # fixit add rule for travel, when tag = Work -> category = Variable
-
         # Specific cases
         if category == "education" and "medcurso" in description:
             return "Fixed"
