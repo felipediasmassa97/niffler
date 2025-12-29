@@ -133,19 +133,18 @@ def kpis_view():
         ).card()
 
     inc_cats = calc_cat.income_categories_sorted
-    inc_by_cat = calc_cat.income_by_category
-    inc_perc_by_cat = calc_cat.income_perc_by_category
-
     with st.expander("Per-category KPIs"):
         for category in inc_cats:
             st.markdown(f"**{category}**")
 
             cols = st.columns(2)
             with cols[0]:
-                CardKpiCurrency(title="Income", value=inc_by_cat[category]).card()
+                CardKpiCurrency(
+                    title="Income", value=calc_cat.income_by_category[category]
+                ).card()
             with cols[1]:
                 CardKpiPercentage(
-                    title="Income (%)", value=inc_perc_by_cat[category]
+                    title="Income (%)", value=calc_cat.income_perc_by_category[category]
                 ).card()
 
     st.header("Expenses Breakdown")
@@ -169,14 +168,14 @@ def kpis_view():
             title="Fixed Expenses (% Income)", value=calc.fixed_expenses_perc
         ).card()
 
-    exp_fixed_cats = calc_cat.expenses_fixed_categories_sorted
-    exp_fixed_by_cat = calc_cat.expenses_fixed_by_category
-
     st.markdown("**Top 3 Categories**")
     cols = st.columns(3)
+    exp_fixed_cats = calc_cat.expenses_fixed_categories_sorted
     for idx_cat, category in enumerate(exp_fixed_cats[:3]):
         with cols[idx_cat]:
-            CardKpiCurrency(title=category, value=exp_fixed_by_cat[category]).card()
+            CardKpiCurrency(
+                title=category, value=calc_cat.expenses_fixed_by_category[category]
+            ).card()
 
     st.subheader("Variable Expenses")
 
@@ -188,14 +187,14 @@ def kpis_view():
             title="Variable Expenses (% Income)", value=calc.variable_expenses_perc
         ).card()
 
-    exp_variable_cats = calc_cat.expenses_variable_categories_sorted
-    exp_variable_by_cat = calc_cat.expenses_variable_by_category
-
     st.markdown("**Top 3 Categories**")
     cols = st.columns(3)
+    exp_variable_cats = calc_cat.expenses_variable_categories_sorted
     for idx_cat, category in enumerate(exp_variable_cats[:3]):
         with cols[idx_cat]:
-            CardKpiCurrency(title=category, value=exp_variable_by_cat[category]).card()
+            CardKpiCurrency(
+                title=category, value=calc_cat.expenses_variable_by_category[category]
+            ).card()
 
     st.subheader("Lifestyle Expenses")
 
@@ -209,14 +208,14 @@ def kpis_view():
             title="Lifestyle Expenses (% Income)", value=calc.lifestyle_expenses_perc
         ).card()
 
-    exp_lifestyle_cats = calc_cat.expenses_lifestyle_categories_sorted
-    exp_lifestyle_by_cat = calc_cat.expenses_lifestyle_by_category
-
     st.markdown("**Top 3 Categories**")
     cols = st.columns(3)
+    exp_lifestyle_cats = calc_cat.expenses_lifestyle_categories_sorted
     for idx_cat, category in enumerate(exp_lifestyle_cats[:3]):
         with cols[idx_cat]:
-            CardKpiCurrency(title=category, value=exp_lifestyle_by_cat[category]).card()
+            CardKpiCurrency(
+                title=category, value=calc_cat.expenses_lifestyle_by_category[category]
+            ).card()
 
     st.subheader("Category Breakdown")
 
@@ -231,13 +230,18 @@ def kpis_view():
                 ).card()
             with cols[1]:
                 pass
-                # fixit add "Budget Overrun (%)"
-                CardKpiPercentage(title="Budget Overrun (%)", value=None).card()
+                CardKpiPercentage(
+                    title="Budget Utilization (%)",
+                    value=calc_cat.expenses_budget_utilization_perc_by_category[
+                        category
+                    ],
+                ).card()
             with cols[2]:
                 pass
-                # fixit add "Forecast Expense" (if this pace continues, total expenses will be XXX)
-                # fixit only project if CATEGORY_MUST_PROJECT[category] is True, else "N/A"
-                CardKpiCurrency(title="Forecast Expense", value=None).card()
+                CardKpiCurrency(
+                    title="Forecast Expense",
+                    value=calc_cat.expenses_forecast_by_category[category],
+                ).card()
     st.subheader("Travel")
 
     calc_trip = KpiMainTripCalculator(loader)

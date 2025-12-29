@@ -3,28 +3,28 @@
 # If a category must be projected, its actual costs are projected to the full period proportionally to date
 # If a category must not be projected, its actual costs are taken as-is without projection
 CATEGORY_MUST_PROJECT = {
-    "car": True,  # because most transactions are distributed (gas)
-    "health": True,  # because most transactions are weekly (therapy)
-    "home": True,  # because it is actionable
-    "personal felp": True,  # because it is actionable
-    "personal lena": True,  # because it is actionable
-    "recreation": True,  # because it is actionable
-    "restaurant": True,  # because it is actionable
-    "transport": True,  # because most transactions are distributed (Uber)
-    "unknown": True,  # because no good reason not to be
-    "work lunch": True,  # because it is actionable
-    "commute": False,  # because transactions are lumped sums (card recharge)
-    "donation": False,  # because of irregularity
-    "education": False,  # because transactions are one-shot (graduation)
-    "gift": False,  # because of irregularity
-    "high costs": False,  # because of irregularity
-    "maintenance": False,  # because of irregularity
-    "pharmacy": True,  # because of irregularity
-    "physical": False,  # because transactions are one-shot or irregular
-    "rent": False,  # because transactions are one-shot
-    "services": False,  # because transactions are monthly
-    "subscriptions": False,  # because transactions are one-shot
-    "supermarket": False,  # because most expensive transaction is monthly
-    "travel": False,  # because of irregularity
-    "work": False,  # because of irregularity
+    "Car": True,  # because most transactions are distributed (gas)
+    "Health": True,  # because most transactions are weekly (therapy)
+    "Home": True,  # because it is actionable
+    "Personal Felp": True,  # because it is actionable
+    "Personal Lena": True,  # because it is actionable
+    "Recreation": True,  # because it is actionable
+    "Restaurant": True,  # because it is actionable
+    "Transport": True,  # because most transactions are distributed (Uber)
+    "Unknown": True,  # because no good reason not to be
+    "Work Lunch": True,  # because it is actionable
+    "Commute": False,  # because transactions are lumped sums (card recharge)
+    "Donation": False,  # because of irregularity
+    "Education": False,  # because transactions are one-shot (graduation)
+    "Gift": False,  # because of irregularity
+    "High Costs": False,  # because of irregularity
+    "Maintenance": False,  # because of irregularity
+    "Pharmacy": True,  # because of irregularity
+    "Physical": False,  # because transactions are one-shot or irregular
+    "Rent": False,  # because transactions are one-shot
+    "Services": False,  # because transactions are monthly
+    "Subscriptions": False,  # because transactions are one-shot
+    "Supermarket": False,  # because most expensive transaction is monthly
+    "Travel": False,  # because of irregularity
+    "Work": False,  # because of irregularity
 }

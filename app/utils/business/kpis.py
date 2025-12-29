@@ -1,10 +1,14 @@
 """Data KPIs."""
 
+import calendar
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal
 
 import streamlit as st
 
+from utils.business.budget import CATEGORY_BUDGETS
+from utils.business.forecast import CATEGORY_MUST_PROJECT
 from utils.business.travel import TripBalanceCalculator
 from utils.operators import Operator
 from utils.operators.filter import ThisYearFilter
@@ -239,6 +243,33 @@ class KpiCategoryCalculator(KpiCalculator):
         return {
             category: abs(expenses[expenses["Category"] == category]["Value"].sum())
             for category in expenses["Category"].unique()
+        }
+
+    @property
+    def expenses_budget_utilization_perc_by_category(self) -> dict[str, float]:
+        """Expenses budget utilization by category."""
+        expenses = self._data[self._data["Value"] < 0]
+        return {
+            category: (abs(expenses[expenses["Category"] == category]["Value"].sum()))
+            / (budget + 1e-5)
+            for category, budget in CATEGORY_BUDGETS.items()
+        }
+
+    @property
+    def expenses_forecast_by_category(self) -> dict[str, float]:
+        """Expenses forecast by category."""
+        expenses = self._data[self._data["Value"] < 0]
+
+        today = datetime.today()
+        elapsed_days = today.day
+        days_in_month = calendar.monthrange(today.year, today.month)[1]
+
+        return {
+            category: abs(expenses[expenses["Category"] == category]["Value"].sum())
+            / (elapsed_days / days_in_month)
+            if must_project is True
+            else "N/A"
+            for category, must_project in CATEGORY_MUST_PROJECT.items()
         }
 
     @property
