@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
+import pandas as pd
 import streamlit as st
 
 from utils.business.budget import CATEGORY_BUDGETS
@@ -14,10 +15,6 @@ from utils.operators import Operator
 from utils.operators.filter import ThisYearFilter
 
 
-# fixit add KPIs
-
-# fixit implement per-category monthly budget
-
 # List of KPIs to track
 # (consolidate in new screen, not in monthly or yearly view)
 
@@ -25,13 +22,9 @@ from utils.operators.filter import ThisYearFilter
 # - This month (default)
 # - Enable custom date range picker (last year, last 6 months, last 3 months, last month, this month, this year, all time)
 
-# Show in two flavors:
-# - Projected (default)
-# - Actual
-# fixit implement projected expenses and incomes (consider pending incomes - more predictable - and pending expenses - only the ones already accounted for)
-
 # Define target for each KPI
-# fixit implement target visualization
+# fixit define targets for each KPI (long-term)
+# fixit implement target and delta visualization
 
 # Big Picture:
 # - Total income
@@ -90,14 +83,24 @@ class KpiCalculator:
         self._data = operator.data
 
     @property
+    def income(self) -> pd.DataFrame:
+        """Income."""
+        return self._data[self._data["Value"] > 0]
+
+    @property
+    def expenses(self) -> pd.DataFrame:
+        """Expenses."""
+        return self._data[self._data["Value"] < 0]
+
+    @property
     def total_income(self) -> float:
         """Total income."""
-        return self._data[self._data["Value"] > 0]["Value"].sum()
+        return self.income["Value"].sum()
 
     @property
     def total_expenses(self) -> float:
         """Total expenses."""
-        return abs(self._data[self._data["Value"] < 0]["Value"].sum())
+        return abs(self.expenses["Value"].sum())
 
     @property
     def net_income(self) -> float:
@@ -112,9 +115,7 @@ class KpiCalculator:
     @property
     def fixed_income(self) -> float:
         """Fixed income."""
-        return self._data[(self._data["Value"] > 0) & (self._data["Tier"] == "Fixed")][
-            "Value"
-        ].sum()
+        return self.income[(self.income["Tier"] == "Fixed")]["Value"].sum()
 
     @property
     def fixed_income_perc(self) -> float:
@@ -124,11 +125,7 @@ class KpiCalculator:
     @property
     def fixed_expenses(self) -> float:
         """Fixed expenses."""
-        return abs(
-            self._data[(self._data["Value"] < 0) & (self._data["Tier"] == "Fixed")][
-                "Value"
-            ].sum()
-        )
+        return abs(self.expenses[(self.expenses["Tier"] == "Fixed")]["Value"].sum())
 
     @property
     def fixed_expenses_perc(self) -> float:
@@ -138,11 +135,7 @@ class KpiCalculator:
     @property
     def variable_expenses(self) -> float:
         """Variable expenses."""
-        return abs(
-            self._data[(self._data["Value"] < 0) & (self._data["Tier"] == "Variable")][
-                "Value"
-            ].sum()
-        )
+        return abs(self.expenses[(self.expenses["Tier"] == "Variable")]["Value"].sum())
 
     @property
     def variable_expenses_perc(self) -> float:
@@ -152,11 +145,7 @@ class KpiCalculator:
     @property
     def lifestyle_expenses(self) -> float:
         """Lifestyle expenses."""
-        return abs(
-            self._data[(self._data["Value"] < 0) & (self._data["Tier"] == "Lifestyle")][
-                "Value"
-            ].sum()
-        )
+        return abs(self.expenses[(self.expenses["Tier"] == "Lifestyle")]["Value"].sum())
 
     @property
     def lifestyle_expenses_perc(self) -> float:
@@ -206,6 +195,10 @@ class KpiCategoryCalculator(KpiCalculator):
         )
         return [item[0] for item in items_sorted]
 
+    def get_category_data(self, data: pd.DataFrame, category: str) -> pd.DataFrame:
+        """Get category data."""
+        return data[data["Category"] == category]
+
     @property
     def income_categories_sorted(self) -> list[str]:
         """Income categories sorted by value, descending."""
@@ -214,21 +207,18 @@ class KpiCategoryCalculator(KpiCalculator):
     @property
     def income_by_category(self) -> dict[str, float]:
         """Income by category."""
-        income = self._data[self._data["Value"] > 0]
         return {
-            category: income[income["Category"] == category]["Value"].sum()
-            for category in income["Category"].unique()
+            category: self.get_category_data(self.income, category)["Value"].sum()
+            for category in self.income["Category"].unique()
         }
 
     @property
     def income_perc_by_category(self) -> dict[str, float]:
         """Income percentage by category."""
-        income = self._data[self._data["Value"] > 0]
-        total_income = self.total_income + 1e-5
         return {
-            category: income[income["Category"] == category]["Value"].sum()
-            / total_income
-            for category in income["Category"].unique()
+            category: self.get_category_data(self.income, category)["Value"].sum()
+            / (self.total_income + 1e-5)
+            for category in self.income["Category"].unique()
         }
 
     @property
@@ -239,18 +229,20 @@ class KpiCategoryCalculator(KpiCalculator):
     @property
     def expenses_by_category(self) -> dict[str, float]:
         """Expenses by category."""
-        expenses = self._data[self._data["Value"] < 0]
         return {
-            category: abs(expenses[expenses["Category"] == category]["Value"].sum())
-            for category in expenses["Category"].unique()
+            category: abs(
+                self.get_category_data(self.expenses, category)["Value"].sum()
+            )
+            for category in self.expenses["Category"].unique()
         }
 
     @property
     def expenses_budget_utilization_perc_by_category(self) -> dict[str, float]:
         """Expenses budget utilization by category."""
-        expenses = self._data[self._data["Value"] < 0]
         return {
-            category: (abs(expenses[expenses["Category"] == category]["Value"].sum()))
+            category: (
+                abs(self.get_category_data(self.expenses, category)["Value"].sum())
+            )
             / (budget + 1e-5)
             for category, budget in CATEGORY_BUDGETS.items()
         }
@@ -258,14 +250,14 @@ class KpiCategoryCalculator(KpiCalculator):
     @property
     def expenses_forecast_by_category(self) -> dict[str, float]:
         """Expenses forecast by category."""
-        expenses = self._data[self._data["Value"] < 0]
-
         today = datetime.today()
         elapsed_days = today.day
         days_in_month = calendar.monthrange(today.year, today.month)[1]
 
         return {
-            category: abs(expenses[expenses["Category"] == category]["Value"].sum())
+            category: abs(
+                self.get_category_data(self.expenses, category)["Value"].sum()
+            )
             / (elapsed_days / days_in_month)
             if must_project is True
             else "N/A"
@@ -280,14 +272,14 @@ class KpiCategoryCalculator(KpiCalculator):
     @property
     def expenses_fixed_by_category(self) -> dict[str, float]:
         """Fixed expenses by category."""
-        expenses = self._data[self._data["Value"] < 0]
         return {
             category: abs(
-                expenses[
-                    (expenses["Category"] == category) & (expenses["Tier"] == "Fixed")
+                self.expenses[
+                    (self.expenses["Category"] == category)
+                    & (self.expenses["Tier"] == "Fixed")
                 ]["Value"].sum()
             )
-            for category in expenses["Category"].unique()
+            for category in self.expenses["Category"].unique()
         }
 
     @property
@@ -298,15 +290,14 @@ class KpiCategoryCalculator(KpiCalculator):
     @property
     def expenses_variable_by_category(self) -> dict[str, float]:
         """Variable expenses by category."""
-        expenses = self._data[self._data["Value"] < 0]
         return {
             category: abs(
-                expenses[
-                    (expenses["Category"] == category)
-                    & (expenses["Tier"] == "Variable")
+                self.expenses[
+                    (self.expenses["Category"] == category)
+                    & (self.expenses["Tier"] == "Variable")
                 ]["Value"].sum()
             )
-            for category in expenses["Category"].unique()
+            for category in self.expenses["Category"].unique()
         }
 
     @property
@@ -317,15 +308,14 @@ class KpiCategoryCalculator(KpiCalculator):
     @property
     def expenses_lifestyle_by_category(self) -> dict[str, float]:
         """Lifestyle expenses by category."""
-        expenses = self._data[self._data["Value"] < 0]
         return {
             category: abs(
-                expenses[
-                    (expenses["Category"] == category)
-                    & (expenses["Tier"] == "Lifestyle")
+                self.expenses[
+                    (self.expenses["Category"] == category)
+                    & (self.expenses["Tier"] == "Lifestyle")
                 ]["Value"].sum()
             )
-            for category in expenses["Category"].unique()
+            for category in self.expenses["Category"].unique()
         }
 
 
