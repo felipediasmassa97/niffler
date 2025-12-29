@@ -65,10 +65,15 @@ def kpis_view():
     cols = st.columns(2)
     with cols[0]:
         CardKpiCurrency(title="Total Income", value=calc.total_income).card()
-        CardKpiCurrency(title="Net Income", value=calc.net_income).card()
     with cols[1]:
         CardKpiCurrency(title="Total Expenses", value=calc.total_expenses).card()
+
+    cols = st.columns(2)
+    with cols[0]:
+        CardKpiCurrency(title="Net Income", value=calc.net_income).card()
+    with cols[1]:
         CardKpiPercentage(title="Net Income (%)", value=calc.net_income_perc).card()
+
     st.header("Time Trends")
 
     cols = st.columns(3)

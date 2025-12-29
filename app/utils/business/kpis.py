@@ -24,7 +24,6 @@ from utils.operators.filter import ThisYearFilter
 
 # Define target for each KPI
 # fixit define targets for each KPI
-# fixit implement target and delta visualization
 
 # Big Picture:
 # - Total income
@@ -351,8 +350,9 @@ class CardKpi:
     title: str
     subtitle: str = ""
     kind: str = "currency"  # "currency" | "percentage"
-    value: float = None
-    target: float = None
+    value: float | Literal["N/A"] | None = None
+    target: float | Literal["N/A"] | None = None
+    higher_is_better: bool = None
 
     def _format_value(self, value: float | Literal["N/A"] | None) -> str:
         """Format value."""
@@ -369,6 +369,16 @@ class CardKpi:
         value_actual = self._format_value(self.value)
         value_target = self._format_value(self.target)
 
+        # Determine card status for coloring
+        class_delta = ""
+        if self.target is not None and self.higher_is_better is None:
+            raise ValueError("higher_is_better must be passed")
+        if self.value is not None and self.target is not None:
+            if (self.value >= self.target) == self.higher_is_better:
+                class_delta = "kpi-card-met"
+            else:
+                class_delta = "kpi-card-not-met"
+
         st.markdown(
             """
             <style>
@@ -379,6 +389,14 @@ class CardKpi:
                 padding: 16px;
                 background: rgba(255, 255, 255, 0.03);
                 text-align: center;
+            }
+            .kpi-card-met {
+                border-color: rgba(34, 197, 94, 0.5);
+                background: rgba(34, 197, 94, 0.1);
+            }
+            .kpi-card-not-met {
+                border-color: rgba(239, 68, 68, 0.5);
+                background: rgba(239, 68, 68, 0.1);
             }
             .kpi-title {
                 font-size: 1.00rem;
@@ -408,15 +426,13 @@ class CardKpi:
             unsafe_allow_html=True,
         )
 
-        # fixit implement delta vs target
-        excerpt_target = f'<div class="kpi-target">Target: <b>{value_target}</b></div>'
         st.markdown(
             f"""
-            <div class="kpi-card">
+            <div class="kpi-card {class_delta}">
                 <div class="kpi-title">{self.title}</div>
                 <div class="kpi-subtitle">{self.subtitle}</div>
                 <div class="kpi-value">{value_actual}</div>
-                {excerpt_target if self.target is not None else ""}
+                <div class="kpi-target">Target: <b>{value_target}</b></div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -427,7 +443,12 @@ class CardKpiCurrency(CardKpi):
     """Currency KPI card."""
 
     def __init__(
-        self, title: str, subtitle: str = "", value: float = None, target: float = None
+        self,
+        title: str,
+        subtitle: str = "",
+        value: float | Literal["N/A"] | None = None,
+        target: float | Literal["N/A"] | None = None,
+        higher_is_better: bool = None,
     ):
         super().__init__(
             title=title,
@@ -435,6 +456,7 @@ class CardKpiCurrency(CardKpi):
             kind="currency",
             value=value,
             target=target,
+            higher_is_better=higher_is_better,
         )
 
 
@@ -442,7 +464,12 @@ class CardKpiPercentage(CardKpi):
     """Percentage KPI card."""
 
     def __init__(
-        self, title: str, subtitle: str = "", value: float = None, target: float = None
+        self,
+        title: str,
+        subtitle: str = "",
+        value: float | Literal["N/A"] | None = None,
+        target: float | Literal["N/A"] | None = None,
+        higher_is_better: bool = None,
     ):
         super().__init__(
             title=title,
@@ -450,4 +477,5 @@ class CardKpiPercentage(CardKpi):
             kind="percentage",
             value=value,
             target=target,
+            higher_is_better=higher_is_better,
         )
