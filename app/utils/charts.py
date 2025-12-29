@@ -8,8 +8,8 @@ import plotly.graph_objects as go
 
 from utils.operators import Operator
 
-# fixit add custom colors for categories (long-term)
-# fixit make fancier charts (fine formatting on tooltip, for example) (long-term)
+# fixit long-term add custom colors for categories
+# fixit make fancier charts (fine formatting on tooltip, for example)
 # use hover_data and fig.update_traces(hovertemplate=...) to customize hover tooltips
 # e.g.: hovertemplate="Date: %{x|%b/%Y}<br>Value: %{y}<br>Category: %{text}"
 

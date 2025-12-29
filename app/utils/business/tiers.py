@@ -35,7 +35,7 @@ class TierAssigner(Operator):
         """Assign tiers for income entries."""
 
         # Specific cases
-        # fixit evaluate fixed and variable differentiation for salary (long-term)
+        # fixit long-term evaluate fixed and variable differentiation for salary
 
         # General per-category assignment
         return {

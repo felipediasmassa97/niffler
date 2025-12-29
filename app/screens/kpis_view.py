@@ -24,7 +24,7 @@ def kpis_view():
     st.title("KPIs View")
 
     # Date filter
-    # fixit add custom date range picker (long-term)
+    # fixit long-term add custom date range picker
     cmp_date_filter = st.selectbox(
         "Date Range",
         options=[

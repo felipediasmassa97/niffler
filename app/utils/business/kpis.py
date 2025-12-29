@@ -23,7 +23,7 @@ from utils.operators.filter import ThisYearFilter
 # - Enable custom date range picker (last year, last 6 months, last 3 months, last month, this month, this year, all time)
 
 # Define target for each KPI
-# fixit define targets for each KPI (long-term)
+# fixit define targets for each KPI
 # fixit implement target and delta visualization
 
 # Big Picture:
@@ -65,9 +65,9 @@ from utils.operators.filter import ThisYearFilter
 #   - Target: Beginner = <20%, Ideal = <10%, Elite = <0%
 #   - Evaluate yearly, not monthly
 
-# fixit implement investments KPIs (long-term)
-# fixit implement KPI based on how much of income is invested monthly (long-term)
-# fixit implement "Months of Runway" KPI (long-term)
+# fixit long-term implement investments KPIs
+# fixit long-term implement KPI based on how much of income is invested monthly
+# fixit long-term implement "Months of Runway" KPI
 # Months of Runway = Emergency Fund / Average Monthly Expenses Over Last 6 Months
 # - Target: Beginner: 3 months, Strong: 6 months, Excellent: 12 months
 # Investments:
@@ -408,15 +408,15 @@ class CardKpi:
             unsafe_allow_html=True,
         )
 
-        # fixit implement delta vs target (long-term)
-        # fixit remove target if not passed
+        # fixit implement delta vs target
+        excerpt_target = f'<div class="kpi-target">Target: <b>{value_target}</b></div>'
         st.markdown(
             f"""
             <div class="kpi-card">
                 <div class="kpi-title">{self.title}</div>
                 <div class="kpi-subtitle">{self.subtitle}</div>
                 <div class="kpi-value">{value_actual}</div>
-                <div class="kpi-target">Target: <b>{value_target}</b></div>
+                {excerpt_target if self.target is not None else ""}
             </div>
             """,
             unsafe_allow_html=True,

@@ -19,7 +19,7 @@ def monthly_view():
     st.title("Monthly View")
 
     # Date filter
-    # fixit add custom date range picker (long-term)
+    # fixit long-term add custom date range picker
     cmp_date_filter = st.selectbox(
         "Date Range",
         options=[
@@ -85,7 +85,7 @@ def monthly_view():
     )
 
     # Per-tier expenses breakdown
-    # fixit add custom colors for tiers (long-term)
+    # fixit add custom colors for tiers
     st.plotly_chart(
         ch.SimpleBarChart(
             operator=agg.MonthlyTierAggregator(expenses),
@@ -109,7 +109,7 @@ def monthly_view():
     )
 
     # Per-tier incomes breakdown
-    # fixit add custom colors for tiers (long-term)
+    # fixit add custom colors for tiers
     st.plotly_chart(
         ch.SimpleBarChart(
             operator=agg.MonthlyTierAggregator(incomes),
@@ -135,7 +135,7 @@ def monthly_view():
     st.subheader("Period Summary")
 
     # Per-tier expenses breakdown
-    # fixit add custom colors for tiers (long-term)
+    # fixit add custom colors for tiers
     st.plotly_chart(
         ch.SimpleBarChart(
             operator=agg.TierAggregator(expenses),
@@ -157,7 +157,7 @@ def monthly_view():
     )
 
     # Per-tier incomes breakdown
-    # fixit add custom colors for tiers (long-term)
+    # fixit add custom colors for tiers
     st.plotly_chart(
         ch.SimpleBarChart(
             operator=agg.TierAggregator(incomes),

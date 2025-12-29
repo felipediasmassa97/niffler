@@ -158,4 +158,4 @@ class AllTimeFilter(DateFilter):
         )
 
 
-# fixit add custom date range filter (long-term)
+# fixit long-term add custom date range filter
