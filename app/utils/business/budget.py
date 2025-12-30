@@ -1,6 +1,6 @@
 """Budget business rules."""
 
-# fixit add monthly budgets
+# fixit collab add monthly budgets
 CATEGORY_BUDGETS = {
     "Car": 1000,
     "Commute": 1000,

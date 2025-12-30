@@ -22,9 +22,6 @@ from utils.operators.filter import ThisYearFilter
 # - This month (default)
 # - Enable custom date range picker (last year, last 6 months, last 3 months, last month, this month, this year, all time)
 
-# Define target for each KPI
-# fixit define targets for each KPI
-
 # Big Picture:
 # - Total income
 # - Total expenses

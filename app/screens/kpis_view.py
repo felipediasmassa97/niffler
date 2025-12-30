@@ -19,13 +19,13 @@ from utils.operators import loader as ldr
 PAGE_TITLE = "KPIs View"
 PAGE_URL = "kpis"
 
-# fixit add real targets
+# fixit collab add real targets
 TARGET_TOTAL_INCOME = None
 TARGET_TOTAL_EXPENSES = None
 TARGET_NET_INCOME = None
 TARGET_NET_INCOME_PERC = None
 
-# fixit add real targets
+# fixit collab add real targets
 TARGET_INCOME_INCREASE_PERC = None
 TARGET_EXPENSES_INCREASE_PERC = None
 TARGET_EXPENSES_INFLATION_PERC = None
