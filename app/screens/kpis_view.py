@@ -2,6 +2,7 @@
 
 import streamlit as st
 
+from utils.business.budget import CATEGORY_BUDGETS
 from utils.business.dilution import Diluter
 from utils.business.kpis import (
     CardKpiCurrency,
@@ -17,6 +18,20 @@ from utils.operators import loader as ldr
 
 PAGE_TITLE = "KPIs View"
 PAGE_URL = "kpis"
+
+# fixit add real targets
+TARGET_TOTAL_INCOME = None
+TARGET_TOTAL_EXPENSES = None
+TARGET_NET_INCOME = None
+TARGET_NET_INCOME_PERC = None
+
+# fixit add real targets
+TARGET_INCOME_INCREASE_PERC = None
+TARGET_EXPENSES_INCREASE_PERC = None
+TARGET_EXPENSES_INFLATION_PERC = None
+
+TARGET_TRIP_BUDGET_OVERRUN = 0
+TARGET_TRIP_BUDGET_OVERRUN_PERC = 0
 
 
 def kpis_view():
@@ -64,15 +79,35 @@ def kpis_view():
 
     cols = st.columns(2)
     with cols[0]:
-        CardKpiCurrency(title="Total Income", value=calc.total_income).card()
+        CardKpiCurrency(
+            title="Total Income",
+            value=calc.total_income,
+            target=TARGET_TOTAL_INCOME,
+            higher_is_better=True,
+        ).card()
     with cols[1]:
-        CardKpiCurrency(title="Total Expenses", value=calc.total_expenses).card()
+        CardKpiCurrency(
+            title="Total Expenses",
+            value=calc.total_expenses,
+            target=TARGET_TOTAL_EXPENSES,
+            higher_is_better=False,
+        ).card()
 
     cols = st.columns(2)
     with cols[0]:
-        CardKpiCurrency(title="Net Income", value=calc.net_income).card()
+        CardKpiCurrency(
+            title="Net Income",
+            value=calc.net_income,
+            target=TARGET_NET_INCOME,
+            higher_is_better=True,
+        ).card()
     with cols[1]:
-        CardKpiPercentage(title="Net Income (%)", value=calc.net_income_perc).card()
+        CardKpiPercentage(
+            title="Net Income (%)",
+            value=calc.net_income_perc,
+            target=TARGET_NET_INCOME_PERC,
+            higher_is_better=True,
+        ).card()
 
     st.header("Time Trends")
 
@@ -82,48 +117,66 @@ def kpis_view():
             title="Income Increase (%)",
             subtitle="Compared to last 3 months average",
             value=calc_tr_3mo.income_increase_perc,
+            target=TARGET_INCOME_INCREASE_PERC,
+            higher_is_better=True,
         ).card()
         CardKpiPercentage(
             title="Expenses Increase (%)",
             subtitle="Compared to last 3 months average",
             value=calc_tr_3mo.expenses_increase_perc,
+            target=TARGET_EXPENSES_INCREASE_PERC,
+            higher_is_better=False,
         ).card()
         CardKpiPercentage(
             title="Expenses Inflation (%)",
             subtitle="Compared to last 3 months average",
             value=calc_tr_3mo.expenses_inflation_perc,
+            target=TARGET_EXPENSES_INFLATION_PERC,
+            higher_is_better=False,
         ).card()
     with cols[1]:
         CardKpiPercentage(
             title="Income Increase (%)",
             subtitle="Compared to last 6 months average",
             value=calc_tr_6mo.income_increase_perc,
+            target=TARGET_INCOME_INCREASE_PERC,
+            higher_is_better=True,
         ).card()
         CardKpiPercentage(
             title="Expenses Increase (%)",
             subtitle="Compared to last 6 months average",
             value=calc_tr_6mo.expenses_increase_perc,
+            target=TARGET_EXPENSES_INCREASE_PERC,
+            higher_is_better=False,
         ).card()
         CardKpiPercentage(
             title="Expenses Inflation (%)",
             subtitle="Compared to last 6 months average",
             value=calc_tr_6mo.expenses_inflation_perc,
+            target=TARGET_EXPENSES_INFLATION_PERC,
+            higher_is_better=False,
         ).card()
     with cols[2]:
         CardKpiPercentage(
             title="Income Increase (%)",
             subtitle="Compared to last 12 months average",
             value=calc_tr_12mo.income_increase_perc,
+            target=TARGET_INCOME_INCREASE_PERC,
+            higher_is_better=True,
         ).card()
         CardKpiPercentage(
             title="Expenses Increase (%)",
             subtitle="Compared to last 12 months average",
             value=calc_tr_12mo.expenses_increase_perc,
+            target=TARGET_EXPENSES_INCREASE_PERC,
+            higher_is_better=False,
         ).card()
         CardKpiPercentage(
             title="Expenses Inflation (%)",
             subtitle="Compared to last 12 months average",
             value=calc_tr_12mo.expenses_inflation_perc,
+            target=TARGET_EXPENSES_INFLATION_PERC,
+            higher_is_better=False,
         ).card()
 
     st.header("Income Breakdown")
@@ -139,17 +192,17 @@ def kpis_view():
 
     inc_cats = calc_cat.income_categories_sorted
     with st.expander("Per-category KPIs"):
-        for category in inc_cats:
-            st.markdown(f"**{category}**")
+        for cat in inc_cats:
+            st.markdown(f"**{cat}**")
 
             cols = st.columns(2)
             with cols[0]:
                 CardKpiCurrency(
-                    title="Income", value=calc_cat.income_by_category[category]
+                    title="Income", value=calc_cat.income_by_category[cat]
                 ).card()
             with cols[1]:
                 CardKpiPercentage(
-                    title="Income (%)", value=calc_cat.income_perc_by_category[category]
+                    title="Income (%)", value=calc_cat.income_perc_by_category[cat]
                 ).card()
 
     st.header("Expenses Breakdown")
@@ -159,9 +212,9 @@ def kpis_view():
 
     st.markdown("**Top 3 Categories**")
     cols = st.columns(3)
-    for idx_cat, category in enumerate(exp_cats[:3]):
+    for idx_cat, cat in enumerate(exp_cats[:3]):
         with cols[idx_cat]:
-            CardKpiCurrency(title=category, value=exp_by_cat[category]).card()
+            CardKpiCurrency(title=cat, value=exp_by_cat[cat]).card()
 
     st.subheader("Fixed Expenses")
 
@@ -176,10 +229,10 @@ def kpis_view():
     st.markdown("**Top 3 Categories**")
     cols = st.columns(3)
     exp_fixed_cats = calc_cat.expenses_fixed_categories_sorted
-    for idx_cat, category in enumerate(exp_fixed_cats[:3]):
+    for idx_cat, cat in enumerate(exp_fixed_cats[:3]):
         with cols[idx_cat]:
             CardKpiCurrency(
-                title=category, value=calc_cat.expenses_fixed_by_category[category]
+                title=cat, value=calc_cat.expenses_fixed_by_category[cat]
             ).card()
 
     st.subheader("Variable Expenses")
@@ -195,10 +248,10 @@ def kpis_view():
     st.markdown("**Top 3 Categories**")
     cols = st.columns(3)
     exp_variable_cats = calc_cat.expenses_variable_categories_sorted
-    for idx_cat, category in enumerate(exp_variable_cats[:3]):
+    for idx_cat, cat in enumerate(exp_variable_cats[:3]):
         with cols[idx_cat]:
             CardKpiCurrency(
-                title=category, value=calc_cat.expenses_variable_by_category[category]
+                title=cat, value=calc_cat.expenses_variable_by_category[cat]
             ).card()
 
     st.subheader("Lifestyle Expenses")
@@ -216,37 +269,41 @@ def kpis_view():
     st.markdown("**Top 3 Categories**")
     cols = st.columns(3)
     exp_lifestyle_cats = calc_cat.expenses_lifestyle_categories_sorted
-    for idx_cat, category in enumerate(exp_lifestyle_cats[:3]):
+    for idx_cat, cat in enumerate(exp_lifestyle_cats[:3]):
         with cols[idx_cat]:
             CardKpiCurrency(
-                title=category, value=calc_cat.expenses_lifestyle_by_category[category]
+                title=cat, value=calc_cat.expenses_lifestyle_by_category[cat]
             ).card()
 
     st.subheader("Category Breakdown")
 
     with st.expander("Per-category KPIs"):
-        for category in exp_cats:
-            st.markdown(f"**{category}**")
+        for cat in exp_cats:
+            st.markdown(f"**{cat}**")
 
             cols = st.columns(3)
             with cols[0]:
                 CardKpiCurrency(
-                    title="Actual Expense", value=exp_by_cat[category]
+                    title="Actual Expense",
+                    value=exp_by_cat[cat],
+                    target=CATEGORY_BUDGETS[cat],
+                    higher_is_better=False,
                 ).card()
             with cols[1]:
-                pass
                 CardKpiPercentage(
                     title="Budget Utilization (%)",
-                    value=calc_cat.expenses_budget_utilization_perc_by_category[
-                        category
-                    ],
+                    value=calc_cat.expenses_budget_utilization_perc_by_category[cat],
+                    target=1,
+                    higher_is_better=False,
                 ).card()
             with cols[2]:
-                pass
                 CardKpiCurrency(
                     title="Forecast Expense",
-                    value=calc_cat.expenses_forecast_by_category[category],
+                    value=calc_cat.expenses_forecast_by_category[cat],
+                    target=CATEGORY_BUDGETS[cat],
+                    higher_is_better=False,
                 ).card()
+
     st.subheader("Travel")
 
     calc_trip = KpiMainTripCalculator(loader)
@@ -254,13 +311,19 @@ def kpis_view():
     cols = st.columns(2)
     with cols[0]:
         CardKpiCurrency(
-            title="Budget Overrun", subtitle="This year", value=calc_trip.budget_overrun
+            title="Budget Overrun",
+            subtitle="This year",
+            value=calc_trip.budget_overrun,
+            target=TARGET_TRIP_BUDGET_OVERRUN,
+            higher_is_better=False,
         ).card()
     with cols[1]:
         CardKpiPercentage(
             title="Budget Overrun (%)",
             subtitle="This year",
             value=calc_trip.budget_overrun_perc,
+            target=TARGET_TRIP_BUDGET_OVERRUN_PERC,
+            higher_is_better=False,
         ).card()
 
 

@@ -10,7 +10,7 @@ import streamlit as st
 
 from utils.business.budget import CATEGORY_BUDGETS
 from utils.business.forecast import CATEGORY_MUST_PROJECT
-from utils.business.travel import TripBalanceCalculator
+from utils.business.travel import TRIP_FUNDS_ACCOUNT, TripBalanceCalculator
 from utils.operators import Operator
 from utils.operators.filter import ThisYearFilter
 
@@ -324,23 +324,29 @@ class KpiMainTripCalculator(KpiCalculator):
     def __init__(self, operator: Operator) -> None:
         # Enforce this year filter for main trip
         date_filter = ThisYearFilter(operator)
+        self._data = date_filter.data
         self.year = date_filter.year
 
-        self.trip_calc = TripBalanceCalculator(date_filter)
+        self.budget = TripBalanceCalculator.get_budget(self.year)
 
         super().__init__(ThisYearFilter(operator))
 
     @property
     def budget_overrun(self) -> float:
         """Budget overrun."""
-        return self.trip_calc.sum_actuals(self.year) - self.trip_calc.get_budget(
-            self.year
-        )
+        # TripBalanceCalculator creates a transaction with the overrun amount in the
+        # TRIP_FUNDS_ACCOUNT
+        # Negative operator because in TripBalanceCalculator the balance is budget - actuals
+        return -self._data[
+            (self._data["Category"] == "Travel")
+            & (self._data["Account"] == TRIP_FUNDS_ACCOUNT)
+            & (self._data["Date"].dt.year == self.year)
+        ]["Value"].sum()
 
     @property
     def budget_overrun_perc(self) -> float:
         """Budget overrun percentage."""
-        return self.budget_overrun / (self.trip_calc.get_budget(self.year) + 1e-5)
+        return self.budget_overrun / (self.budget + 1e-5)
 
 
 @dataclass
@@ -364,20 +370,29 @@ class CardKpi:
             return f"{value:.1%}" if value is not None else None
         raise ValueError(f"Unknown kind: {self.kind}")
 
+    def _evaluate_kpi(self) -> str:
+        """Evaluate KPI status and return (css_class, icon)."""
+        if self.value == "N/A":
+            return ""
+        if self.target is None:
+            return ""
+        if self.target is not None and self.higher_is_better is None:
+            raise ValueError("higher_is_better must be passed")
+        if (self.value >= self.target) == self.higher_is_better:
+            return "kpi-card-met"
+        return "kpi-card-not-met"
+
     def card(self) -> None:
         """Card."""
         value_actual = self._format_value(self.value)
         value_target = self._format_value(self.target)
 
-        # Determine card status for coloring
-        class_delta = ""
-        if self.target is not None and self.higher_is_better is None:
-            raise ValueError("higher_is_better must be passed")
-        if self.value is not None and self.target is not None:
-            if (self.value >= self.target) == self.higher_is_better:
-                class_delta = "kpi-card-met"
-            else:
-                class_delta = "kpi-card-not-met"
+        # Determine card status and icon
+        class_delta = self._evaluate_kpi()
+        icon = {
+            "kpi-card-met": "✓",
+            "kpi-card-not-met": "✗",
+        }.get(class_delta, "")
 
         st.markdown(
             """
@@ -389,14 +404,24 @@ class CardKpi:
                 padding: 16px;
                 background: rgba(255, 255, 255, 0.03);
                 text-align: center;
+                position: relative;
             }
             .kpi-card-met {
-                border-color: rgba(34, 197, 94, 0.5);
-                background: rgba(34, 197, 94, 0.1);
+                border-color: rgba(16, 185, 129, 0.8);
+                background: rgba(16, 185, 129, 0.15);
+                border-left: 4px solid rgba(16, 185, 129, 1);
             }
             .kpi-card-not-met {
-                border-color: rgba(239, 68, 68, 0.5);
-                background: rgba(239, 68, 68, 0.1);
+                border-color: rgba(220, 38, 38, 0.8);
+                background: rgba(220, 38, 38, 0.15);
+                border-left: 4px solid rgba(220, 38, 38, 1);
+            }
+            .kpi-icon {
+                position: absolute;
+                top: 12px;
+                right: 12px;
+                font-size: 1.2rem;
+                font-weight: bold;
             }
             .kpi-title {
                 font-size: 1.00rem;
@@ -429,6 +454,7 @@ class CardKpi:
         st.markdown(
             f"""
             <div class="kpi-card {class_delta}">
+                <div class="kpi-icon">{icon}</div>
                 <div class="kpi-title">{self.title}</div>
                 <div class="kpi-subtitle">{self.subtitle}</div>
                 <div class="kpi-value">{value_actual}</div>

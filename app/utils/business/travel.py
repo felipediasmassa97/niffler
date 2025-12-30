@@ -36,8 +36,9 @@ class TripBalanceCalculator(Operator):
     def data(self) -> pd.DataFrame:
         return self._data
 
+    @classmethod
     @cache
-    def _load_transfer_data(self) -> pd.DataFrame:
+    def _load_transfer_data(cls) -> pd.DataFrame:
         """Load transfer data from the Transfers sheet."""
         data = pd.read_excel(
             get_latest_data_path(), sheet_name="Transfers", engine="openpyxl"
@@ -45,13 +46,14 @@ class TripBalanceCalculator(Operator):
         data["Year"] = pd.to_datetime(data["Date"], format="%d/%m/%Y").dt.year
         return data
 
-    def get_budget(self, year: int) -> float:
+    @classmethod
+    def get_budget(cls, year: int) -> float:
         """Get trip budget from year N-1.
 
         Trip budget for year N is defined as the sum of all transfer transactions to "Trip Funds"
         account in year N-1.
         """
-        transfer_data = self._load_transfer_data()
+        transfer_data = cls._load_transfer_data()
         return transfer_data[
             (transfer_data["Conta destino"] == TRIP_FUNDS_ACCOUNT)
             & (transfer_data["Year"] == year - 1)
