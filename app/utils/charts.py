@@ -9,9 +9,6 @@ import plotly.graph_objects as go
 from utils.operators import Operator
 
 # fixit long-term add custom colors for categories
-# fixit make fancier charts (fine formatting on tooltip, for example)
-# use hover_data and fig.update_traces(hovertemplate=...) to customize hover tooltips
-# e.g.: hovertemplate="Date: %{x|%b/%Y}<br>Value: %{y}<br>Category: %{text}"
 
 
 @dataclass
@@ -31,6 +28,11 @@ class BarChart(ABC):
     def chart(self) -> go.Figure:
         """Chart figure."""
 
+    @property
+    @abstractmethod
+    def hover_template(self) -> str:
+        """Hover template."""
+
 
 class SimpleBarChart(BarChart):
     """Simple bar chart."""
@@ -45,11 +47,8 @@ class SimpleBarChart(BarChart):
             text=self.column_text,
             category_orders=self.column_cat_orders,
             title=self.title,
-            # hover_data={"Month": ":%b/%Y", "Value": ":.1f", "Type": True},
         )
-        # fig.update_traces(
-        #     hovertemplate="Date: %{x|%b/%Y}<br>Value: %{y}<br>Category: %{text}"
-        # )
+        fig.update_traces(hovertemplate=self.hover_template)
         return fig
 
 
@@ -66,10 +65,44 @@ class GroupedBarChart(BarChart):
             text=self.column_text,
             category_orders=self.column_cat_orders,
             title=self.title,
-            # hover_data={"Month": ":%b/%Y", "Value": ":.1f"},
             barmode="group",
         )
-        # fig.update_traces(
-        #     hovertemplate="Date: %{x|%b/%Y}<br>Value: %{y}<br>Category: %{text}"
-        # )
+        fig.update_traces(hovertemplate=self.hover_template)
         return fig
+
+
+class MonthlyTrendSimpleBarChart(SimpleBarChart):
+    """Monthly trend simple bar chart."""
+
+    @property
+    def hover_template(self) -> str:
+        """Hover template."""
+        return (
+            "<b>%{fullData.name}</b><br>"
+            "Month: %{x|%b/%y}<br>"
+            "Value: R$ %{y:,.2f}"
+            "<extra></extra>"
+        )
+
+
+class MonthlyTrendGroupedBarChart(GroupedBarChart):
+    """Monthly trend grouped bar chart."""
+
+    @property
+    def hover_template(self) -> str:
+        """Hover template."""
+        return (
+            "<b>%{fullData.name}</b><br>"
+            "Month: %{x|%b/%y}<br>"
+            "Value: R$ %{y:,.2f}"
+            "<extra></extra>"
+        )
+
+
+class PeriodSummarySimpleBarChart(SimpleBarChart):
+    """Period summary simple bar chart."""
+
+    @property
+    def hover_template(self) -> str:
+        """Hover template."""
+        return "<b>%{x}</b><br>Value: R$ %{y:,.2f}<extra></extra>"

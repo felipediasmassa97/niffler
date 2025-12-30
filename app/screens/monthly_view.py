@@ -56,7 +56,7 @@ def monthly_view():
 
     # Total monthly incomes, expenses and net income
     st.plotly_chart(
-        ch.GroupedBarChart(
+        ch.MonthlyTrendGroupedBarChart(
             operator=tr.Merger(
                 # Add labels to distinguish the three series in chart
                 tr.LabelAssigner(
@@ -87,7 +87,7 @@ def monthly_view():
     # Per-tier expenses breakdown
     # fixit add custom colors for tiers
     st.plotly_chart(
-        ch.SimpleBarChart(
+        ch.MonthlyTrendSimpleBarChart(
             operator=agg.MonthlyTierAggregator(expenses),
             column_x="Month",
             column_y="Value",
@@ -99,7 +99,7 @@ def monthly_view():
 
     # Per-category expenses breakdown
     st.plotly_chart(
-        ch.SimpleBarChart(
+        ch.MonthlyTrendSimpleBarChart(
             operator=agg.MonthlyCategoryAggregator(expenses),
             column_x="Month",
             column_y="Value",
@@ -111,7 +111,7 @@ def monthly_view():
     # Per-tier incomes breakdown
     # fixit add custom colors for tiers
     st.plotly_chart(
-        ch.SimpleBarChart(
+        ch.MonthlyTrendSimpleBarChart(
             operator=agg.MonthlyTierAggregator(incomes),
             column_x="Month",
             column_y="Value",
@@ -123,7 +123,7 @@ def monthly_view():
 
     # Per-category incomes breakdown
     st.plotly_chart(
-        ch.SimpleBarChart(
+        ch.MonthlyTrendSimpleBarChart(
             operator=agg.MonthlyCategoryAggregator(incomes),
             column_x="Month",
             column_y="Value",
@@ -137,7 +137,7 @@ def monthly_view():
     # Per-tier expenses breakdown
     # fixit add custom colors for tiers
     st.plotly_chart(
-        ch.SimpleBarChart(
+        ch.PeriodSummarySimpleBarChart(
             operator=agg.TierAggregator(expenses),
             column_x="Tier",
             column_y="Value",
@@ -148,7 +148,7 @@ def monthly_view():
 
     # Per-category expenses breakdown
     st.plotly_chart(
-        ch.SimpleBarChart(
+        ch.PeriodSummarySimpleBarChart(
             operator=agg.CategoryAggregator(expenses),
             column_x="Category",
             column_y="Value",
@@ -159,7 +159,7 @@ def monthly_view():
     # Per-tier incomes breakdown
     # fixit add custom colors for tiers
     st.plotly_chart(
-        ch.SimpleBarChart(
+        ch.PeriodSummarySimpleBarChart(
             operator=agg.TierAggregator(incomes),
             column_x="Tier",
             column_y="Value",
@@ -170,7 +170,7 @@ def monthly_view():
 
     # Per-category incomes breakdown
     st.plotly_chart(
-        ch.SimpleBarChart(
+        ch.PeriodSummarySimpleBarChart(
             operator=agg.CategoryAggregator(incomes),
             column_x="Category",
             column_y="Value",
