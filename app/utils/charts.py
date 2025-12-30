@@ -8,8 +8,6 @@ import plotly.graph_objects as go
 
 from utils.operators import Operator
 
-# fixit long-term add custom colors for categories
-
 
 @dataclass
 class BarChart(ABC):

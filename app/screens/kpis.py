@@ -16,7 +16,7 @@ from utils.operators import filter as fl
 from utils.operators import loader as ldr
 
 
-PAGE_TITLE = "KPIs View"
+PAGE_TITLE = "KPIs"
 PAGE_URL = "kpis"
 
 # fixit collab add real targets
@@ -34,9 +34,9 @@ TARGET_TRIP_BUDGET_OVERRUN = 0
 TARGET_TRIP_BUDGET_OVERRUN_PERC = 0
 
 
-def kpis_view():
-    """KPIs View page."""
-    st.title("KPIs View")
+def kpis():
+    """KPIs page."""
+    st.title("KPIs")
 
     # Date filter
     # fixit long-term add custom date range picker
@@ -327,4 +327,4 @@ def kpis_view():
         ).card()
 
 
-kpis_view_page = st.Page(kpis_view, title=PAGE_TITLE, url_path=PAGE_URL)
+kpis_page = st.Page(kpis, title=PAGE_TITLE, url_path=PAGE_URL)
