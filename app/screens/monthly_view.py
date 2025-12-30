@@ -13,6 +13,9 @@ from utils.operators import transformer as tr
 PAGE_TITLE = "Monthly View"
 PAGE_URL = "monthly"
 
+TIER_ORDER = ["Fixed", "Variable", "Lifestyle"]
+TIER_COLORS = {"Fixed": "#1f77b4", "Variable": "#ff7f0e", "Lifestyle": "#2ca02c"}
+
 
 def monthly_view():
     """Monthly View page."""
@@ -85,14 +88,14 @@ def monthly_view():
     )
 
     # Per-tier expenses breakdown
-    # fixit add custom colors for tiers
     st.plotly_chart(
         ch.MonthlyTrendSimpleBarChart(
             operator=agg.MonthlyTierAggregator(expenses),
             column_x="Month",
             column_y="Value",
             column_cat="Tier",
-            column_cat_orders={"Tier": ["Fixed", "Variable", "Lifestyle"]},
+            column_cat_orders={"Tier": TIER_ORDER},
+            column_cat_colors=TIER_COLORS,
             title="Monthly Expenses by Tier",
         ).chart
     )
@@ -109,14 +112,14 @@ def monthly_view():
     )
 
     # Per-tier incomes breakdown
-    # fixit add custom colors for tiers
     st.plotly_chart(
         ch.MonthlyTrendSimpleBarChart(
             operator=agg.MonthlyTierAggregator(incomes),
             column_x="Month",
             column_y="Value",
             column_cat="Tier",
-            column_cat_orders={"Tier": ["Fixed", "Variable", "Lifestyle"]},
+            column_cat_orders={"Tier": TIER_ORDER},
+            column_cat_colors=TIER_COLORS,
             title="Monthly Incomes by Tier",
         ).chart
     )
@@ -135,13 +138,13 @@ def monthly_view():
     st.subheader("Period Summary")
 
     # Per-tier expenses breakdown
-    # fixit add custom colors for tiers
     st.plotly_chart(
         ch.PeriodSummarySimpleBarChart(
             operator=agg.TierAggregator(expenses),
             column_x="Tier",
             column_y="Value",
-            column_cat_orders={"Tier": ["Fixed", "Variable", "Lifestyle"]},
+            column_cat_orders={"Tier": TIER_ORDER},
+            column_cat_colors=TIER_COLORS,
             title="All Expenses by Tier",
         ).chart
     )
@@ -157,13 +160,13 @@ def monthly_view():
     )
 
     # Per-tier incomes breakdown
-    # fixit add custom colors for tiers
     st.plotly_chart(
         ch.PeriodSummarySimpleBarChart(
             operator=agg.TierAggregator(incomes),
             column_x="Tier",
             column_y="Value",
-            column_cat_orders={"Tier": ["Fixed", "Variable", "Lifestyle"]},
+            column_cat_orders={"Tier": TIER_ORDER},
+            column_cat_colors=TIER_COLORS,
             title="All Incomes by Tier",
         ).chart
     )

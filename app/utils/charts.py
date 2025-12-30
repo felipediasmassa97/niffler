@@ -21,6 +21,7 @@ class BarChart(ABC):
     column_cat: str = None
     column_text: str = None
     column_cat_orders: dict[str, list[str]] = None
+    column_cat_colors: dict[str, str] = None
     title: str = None
 
     @property
@@ -46,6 +47,7 @@ class SimpleBarChart(BarChart):
             color=self.column_cat,
             text=self.column_text,
             category_orders=self.column_cat_orders,
+            color_discrete_map=self.column_cat_colors,
             title=self.title,
         )
         fig.update_traces(hovertemplate=self.hover_template)
