@@ -87,7 +87,9 @@ class LastMonthFilter(DateFilter):
         now = pd.Timestamp.now()
         super().__init__(
             operator,
-            start_date=pd.Timestamp(year=now.year, month=now.month - 1, day=1),
+            start_date=pd.Timestamp(
+                year=now.year, month=now.month - 1 if now.month > 1 else 12, day=1
+            ),
             end_date=pd.Timestamp(year=now.year, month=now.month, day=1)
             - pd.Timedelta(days=1),
         )

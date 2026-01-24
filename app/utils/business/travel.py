@@ -6,10 +6,8 @@ from functools import cache
 import pandas as pd
 
 from utils import get_latest_data_path
+from utils.globals import Account
 from utils.operators import Operator
-
-
-TRIP_FUNDS_ACCOUNT = "Trip Funds"
 
 
 class TripBalanceCalculator(Operator):
@@ -55,7 +53,7 @@ class TripBalanceCalculator(Operator):
         """
         transfer_data = cls._load_transfer_data()
         return transfer_data[
-            (transfer_data["Conta destino"] == TRIP_FUNDS_ACCOUNT)
+            (transfer_data["Conta destino"] == Account.TRIP_FUNDS)
             & (transfer_data["Year"] == year - 1)
         ].sum()["Value"]
 
@@ -66,7 +64,7 @@ class TripBalanceCalculator(Operator):
         from "Trip Funds" account in year N.
         """
         travel_data = self.raw_data[
-            (self.raw_data["Account"] == TRIP_FUNDS_ACCOUNT)
+            (self.raw_data["Account"] == Account.TRIP_FUNDS)
             & (self.raw_data["Category"] == "Travel")
             & (self.raw_data["Date"].dt.year == year)
         ]
@@ -89,7 +87,7 @@ class TripBalanceCalculator(Operator):
             # Remove Trip Funds account's Travel expenses from year N
             data_ = data_[
                 ~(
-                    (data_["Account"] == TRIP_FUNDS_ACCOUNT)
+                    (data_["Account"] == Account.TRIP_FUNDS)
                     & (data_["Category"] == "Travel")
                     & (data_["Date"].dt.year == year)
                 )
@@ -101,7 +99,7 @@ class TripBalanceCalculator(Operator):
                 "Date": date,
                 "Description": f"Saldo Viagem {year}",
                 "Value": self.calculate_balance(year),
-                "Account": TRIP_FUNDS_ACCOUNT,
+                "Account": Account.TRIP_FUNDS,
                 "Status": "Paid",
                 "Category": "Travel",
                 "Subcategory": None,

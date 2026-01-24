@@ -10,7 +10,8 @@ import streamlit as st
 
 from utils.business.budget import CATEGORY_BUDGETS
 from utils.business.forecast import CATEGORY_MUST_PROJECT
-from utils.business.travel import TRIP_FUNDS_ACCOUNT, TripBalanceCalculator
+from utils.business.travel import TripBalanceCalculator
+from utils.globals import Account
 from utils.operators import Operator
 from utils.operators.filter import ThisYearFilter
 
@@ -176,9 +177,9 @@ class KpiTrendsCalculator:
     @property
     def expenses_inflation_perc(self) -> float:
         """Expenses inflation percentage."""
-        return (
-            self.expenses_increase_perc - self.income_increase_perc
-        ) / self.income_increase_perc
+        return (self.expenses_increase_perc - self.income_increase_perc) / (
+            self.income_increase_perc + 1e-5
+        )
 
 
 class KpiCategoryCalculator(KpiCalculator):
@@ -315,6 +316,45 @@ class KpiCategoryCalculator(KpiCalculator):
         }
 
 
+class KpiVoucherCalculator(KpiCalculator):
+    """KPI voucher calculator."""
+
+    def __init__(self, voucher_type, operator):
+        self.voucher_type = voucher_type
+        super().__init__(operator)
+
+    @property
+    def voucher_budget(self) -> float:
+        """Voucher budget."""
+        return self.income[self.income["Account"] == self.voucher_type]["Value"].sum()
+
+    @property
+    def voucher_consumption(self) -> float:
+        """Voucher consumption."""
+        return abs(
+            self.expenses[self.expenses["Account"] == self.voucher_type]["Value"].sum()
+        )
+
+    @property
+    def voucher_consumption_perc(self) -> float:
+        """Voucher consumption percentage."""
+        return self.voucher_consumption / (self.voucher_budget + 1e-5)
+
+
+class KpiVrCalculator(KpiVoucherCalculator):
+    """KPI VR calculator."""
+
+    def __init__(self, operator: Operator) -> None:
+        super().__init__(Account.VR, operator)
+
+
+class KpiVaCalculator(KpiVoucherCalculator):
+    """KPI VA calculator."""
+
+    def __init__(self, operator: Operator) -> None:
+        super().__init__(Account.VA, operator)
+
+
 class KpiMainTripCalculator(KpiCalculator):
     """KPI main trip calculator."""
 
@@ -332,11 +372,11 @@ class KpiMainTripCalculator(KpiCalculator):
     def budget_overrun(self) -> float:
         """Budget overrun."""
         # TripBalanceCalculator creates a transaction with the overrun amount in the
-        # TRIP_FUNDS_ACCOUNT
+        # Account.TRIP_FUNDS
         # Negative operator because in TripBalanceCalculator the balance is budget - actuals
         return -self._data[
             (self._data["Category"] == "Travel")
-            & (self._data["Account"] == TRIP_FUNDS_ACCOUNT)
+            & (self._data["Account"] == Account.TRIP_FUNDS)
             & (self._data["Date"].dt.year == self.year)
         ]["Value"].sum()
 

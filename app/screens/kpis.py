@@ -10,6 +10,8 @@ from utils.business.kpis import (
     KpiCalculator,
     KpiTrendsCalculator,
     KpiCategoryCalculator,
+    KpiVrCalculator,
+    KpiVaCalculator,
     KpiMainTripCalculator,
 )
 from utils.operators import filter as fl
@@ -44,6 +46,8 @@ def kpis():
         "Date Range",
         options=[
             {"label": "This Month", "filter": fl.ThisMonthFilter},
+            {"label": "Last Month", "filter": fl.LastMonthFilter},
+            {"label": "Last 3 Months", "filter": fl.Last3MonthsFilter},
         ],
         index=0,
         format_func=lambda x: x["label"],
@@ -74,6 +78,9 @@ def kpis():
         KpiCalculator(fl.Last12MonthsFilter(loader)),
     )
     calc_cat = KpiCategoryCalculator(date_filter)
+    calc_vr = KpiVrCalculator(date_filter)
+    calc_va = KpiVaCalculator(date_filter)
+    calc_trip = KpiMainTripCalculator(loader)  # do not filter by date for trip budget
 
     st.header("Big Picture")
 
@@ -304,9 +311,41 @@ def kpis():
                     higher_is_better=False,
                 ).card()
 
-    st.subheader("Travel")
+    st.subheader("Vouchers")
 
-    calc_trip = KpiMainTripCalculator(loader)
+    cols = st.columns(2)
+    with cols[0]:
+        CardKpiCurrency(
+            title="VR Consumption",
+            value=calc_vr.voucher_consumption,
+            target=calc_vr.voucher_budget,
+            higher_is_better=False,
+        ).card()
+    with cols[1]:
+        CardKpiPercentage(
+            title="VR Consumption (%)",
+            value=calc_vr.voucher_consumption_perc,
+            target=1,
+            higher_is_better=False,
+        ).card()
+
+    cols = st.columns(2)
+    with cols[0]:
+        CardKpiCurrency(
+            title="VA Consumption",
+            value=calc_va.voucher_consumption,
+            target=calc_va.voucher_budget,
+            higher_is_better=False,
+        ).card()
+    with cols[1]:
+        CardKpiPercentage(
+            title="VA Consumption (%)",
+            value=calc_va.voucher_consumption_perc,
+            target=1,
+            higher_is_better=False,
+        ).card()
+
+    st.subheader("Travel")
 
     cols = st.columns(2)
     with cols[0]:
