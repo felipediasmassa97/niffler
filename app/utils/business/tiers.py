@@ -5,6 +5,8 @@ from unidecode import unidecode
 
 from utils.operators import Operator
 
+# fixit add most actionable, mid-actionable, least actionable tiers
+
 
 class TierAssigner(Operator):
     """Data tier assigner."""

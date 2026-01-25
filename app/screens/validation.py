@@ -2,6 +2,10 @@
 
 import streamlit as st
 
+# fixit add duplicate detection validation
+# fixit add tier assignment validation (based on rules in tiers.py)
+# fixit add dilution assignment validation (based on rules in kpis.py)
+
 
 def validation():
     """Validation page."""
