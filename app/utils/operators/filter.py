@@ -1,5 +1,7 @@
 """Data filters."""
 
+from abc import ABC, abstractmethod
+
 import pandas as pd
 
 from utils.operators import Operator
@@ -38,126 +40,145 @@ class IncomesFilter(Filter):
         super().__init__(operator, operator.data["Value"] > 0)
 
 
-class DateFilter(Filter):
+class DateFilter(Filter, ABC):
     """Date filter."""
 
-    def __init__(
-        self,
-        operator: Operator,
-        start_date: pd.Timestamp,
-        end_date: pd.Timestamp | None = None,
-    ):
-        if end_date is None:
-            end_date = pd.Timestamp.now()
+    def __init__(self, operator: Operator):
+        self.now = pd.Timestamp.now()
         super().__init__(
             operator,
-            (operator.data["Date"] >= start_date) & (operator.data["Date"] <= end_date),
+            (operator.data["Date"] >= self.start_date)
+            & (operator.data["Date"] <= self.end_date),
         )
+
+    @property
+    @abstractmethod
+    def start_date(self) -> pd.Timestamp:
+        """Start date."""
+
+    @property
+    @abstractmethod
+    def end_date(self) -> pd.Timestamp:
+        """End date."""
 
 
 class ThisYearFilter(DateFilter):
     """This year filter."""
 
-    def __init__(self, operator: Operator):
-        super().__init__(
-            operator,
-            start_date=pd.Timestamp(year=self.year, month=1, day=1),
-        )
+    @property
+    def start_date(self) -> pd.Timestamp:
+        return pd.Timestamp(year=self.year, month=1, day=1)
+
+    @property
+    def end_date(self) -> pd.Timestamp:
+        return pd.Timestamp(year=self.year, month=12, day=31)
 
     @property
     def year(self) -> int:
-        return pd.Timestamp.now().year
+        return self.now.year
 
 
 class ThisMonthFilter(DateFilter):
     """This month filter."""
 
-    def __init__(self, operator: Operator):
-        now = pd.Timestamp.now()
-        super().__init__(
-            operator,
-            start_date=pd.Timestamp(year=now.year, month=now.month, day=1),
-        )
+    @property
+    def start_date(self) -> pd.Timestamp:
+        return pd.Timestamp(year=self.now.year, month=self.now.month, day=1)
+
+    @property
+    def end_date(self) -> pd.Timestamp:
+        next_month = self.now.month + 1 if self.now.month < 12 else 1
+        next_month_year = self.now.year if self.now.month < 12 else self.now.year + 1
+        return pd.Timestamp(
+            year=next_month_year, month=next_month, day=1
+        ) - pd.Timedelta(days=1)
 
 
 class LastMonthFilter(DateFilter):
     """Last month filter."""
 
-    def __init__(self, operator: Operator):
-        now = pd.Timestamp.now()
-        super().__init__(
-            operator,
-            start_date=pd.Timestamp(
-                year=now.year, month=now.month - 1 if now.month > 1 else 12, day=1
-            ),
-            end_date=pd.Timestamp(year=now.year, month=now.month, day=1)
-            - pd.Timedelta(days=1),
-        )
+    @property
+    def start_date(self) -> pd.Timestamp:
+        return pd.Timestamp(self.now - pd.DateOffset(months=1)).replace(day=1)
+
+    @property
+    def end_date(self) -> pd.Timestamp:
+        return pd.Timestamp(
+            year=self.now.year, month=self.now.month, day=1
+        ) - pd.Timedelta(days=1)
 
 
 class Last3MonthsFilter(DateFilter):
     """Last 3 months filter."""
 
-    def __init__(self, operator: Operator):
-        super().__init__(
-            operator,
-            start_date=pd.Timestamp(
-                pd.Timestamp.now() - pd.DateOffset(months=3)
-            ).replace(day=1),
-        )
+    @property
+    def start_date(self) -> pd.Timestamp:
+        return pd.Timestamp(self.now - pd.DateOffset(months=3)).replace(day=1)
+
+    @property
+    def end_date(self) -> pd.Timestamp:
+        return pd.Timestamp(
+            year=self.now.year, month=self.now.month, day=1
+        ) - pd.Timedelta(days=1)
 
 
 class Last6MonthsFilter(DateFilter):
     """Last 6 months filter."""
 
-    def __init__(self, operator: Operator):
-        super().__init__(
-            operator,
-            start_date=pd.Timestamp(
-                pd.Timestamp.now() - pd.DateOffset(months=6)
-            ).replace(day=1),
-        )
+    @property
+    def start_date(self) -> pd.Timestamp:
+        return pd.Timestamp(self.now - pd.DateOffset(months=6)).replace(day=1)
+
+    @property
+    def end_date(self) -> pd.Timestamp:
+        return pd.Timestamp(
+            year=self.now.year, month=self.now.month, day=1
+        ) - pd.Timedelta(days=1)
 
 
 class Last12MonthsFilter(DateFilter):
     """Last 12 months filter."""
 
-    def __init__(self, operator: Operator):
-        super().__init__(
-            operator,
-            start_date=pd.Timestamp(
-                pd.Timestamp.now() - pd.DateOffset(months=12)
-            ).replace(day=1),
-        )
+    @property
+    def start_date(self) -> pd.Timestamp:
+        return pd.Timestamp(self.now - pd.DateOffset(months=12)).replace(day=1)
+
+    @property
+    def end_date(self) -> pd.Timestamp:
+        return pd.Timestamp(
+            year=self.now.year, month=self.now.month, day=1
+        ) - pd.Timedelta(days=1)
 
 
 class LastYearFilter(DateFilter):
     """Last year filter."""
 
-    def __init__(self, operator: Operator):
-        super().__init__(
-            operator,
-            start_date=pd.Timestamp(year=self.year, month=1, day=1),
-            end_date=pd.Timestamp(year=self.year, month=12, day=31),
+    @property
+    def start_date(self) -> pd.Timestamp:
+        return pd.Timestamp(self.now - pd.DateOffset(months=12)).replace(month=1, day=1)
+
+    @property
+    def end_date(self) -> pd.Timestamp:
+        return pd.Timestamp(self.now - pd.DateOffset(months=12)).replace(
+            month=12, day=31
         )
 
     @property
     def year(self) -> int:
-        return pd.Timestamp.now().year - 1
+        return self.now.year - 1
 
 
 class AllTimeFilter(DateFilter):
     """All time filter."""
 
-    def __init__(self, operator: Operator):
-        """Initialize all time filter.
+    @property
+    def start_date(self) -> pd.Timestamp:
+        """Started using Mobills in Jan-24, but first data is from Dec-23 (main trip budget)."""
+        return pd.Timestamp(year=2023, month=12, day=31)
 
-        Started using Mobills in Jan-24, but first data is from Dec-23 (main trip budget).
-        """
-        super().__init__(
-            operator,
-            start_date=pd.Timestamp(year=2023, month=12, day=31),
-        )
+    @property
+    def end_date(self) -> pd.Timestamp:
+        return self.now
 
 
 # fixit long-term add custom date range filter
