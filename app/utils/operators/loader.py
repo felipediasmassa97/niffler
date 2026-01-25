@@ -3,6 +3,7 @@
 import pandas as pd
 
 from utils import get_latest_data_path
+from utils.business.dilution import DilutionAssigner
 from utils.business.tiers import TierAssigner
 from utils.business.travel import TripBalanceCalculator
 from utils.operators import Operator
@@ -67,7 +68,7 @@ class ProcessedLoader(Operator):
         """Initialize the processed data loader."""
         loader = Loader()
         self._processed_loader = TripBalanceCalculator(
-            TierAssigner(PreProcessedLoader(loader))
+            TierAssigner(DilutionAssigner(PreProcessedLoader(loader)))
         )
 
     @property

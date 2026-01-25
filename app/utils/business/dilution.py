@@ -6,30 +6,22 @@ from unidecode import unidecode
 from utils.operators import Operator
 
 
-class Diluter(Operator):
-    """Data expenses diluter.
-
-    Dilutes specific incomes and expenses over a 12-month period.
+class DilutionAssigner(Operator):
+    """Data expense dilution assigner.
 
     Transactions to be diluted depend on business rules associated to their category and value.
     """
 
     def __init__(self, operator: Operator) -> None:
         """Initialize the tier assigner."""
-
         self._data = operator.data.copy()
-
         self._data["Dilution"] = self._data.apply(self._assign_dilution, axis=1)
-        self._data = self._dilute_costs(self._data)
-
-        # Update Month column after dilution
-        self._data["Month"] = self._data["Date"].dt.to_period("M").dt.to_timestamp()
 
     @property
     def data(self) -> pd.DataFrame:
         return self._data
 
-    def _assign_dilution(self, row: pd.Series) -> str:
+    def _assign_dilution(self, row: pd.Series) -> bool:
         """Assign dilution to the given data."""
         category = self._standardize_string(row["Category"])
         value = row["Value"]
@@ -95,6 +87,27 @@ class Diluter(Operator):
             "work lunch": False,
         }[category]
 
+    def _standardize_string(self, s: str) -> str:
+        """Standardize a string by removing accents and converting to lowercase."""
+        return unidecode(s).lower()
+
+
+class Diluter(DilutionAssigner):
+    """Data expenses diluter.
+
+    Dilutes specific incomes and expenses over a 12-month period.
+    """
+
+    def __init__(self, operator: Operator) -> None:
+        """Initialize the tier assigner."""
+
+        super().__init__(operator)
+
+        self._data = self._dilute_costs(self._data)
+
+        # Update Month column after dilution
+        self._data["Month"] = self._data["Date"].dt.to_period("M").dt.to_timestamp()
+
     def _dilute_costs(self, data: pd.DataFrame) -> pd.DataFrame:
         """Dilute costs in the given data.
 
@@ -147,7 +160,3 @@ class Diluter(Operator):
         return [
             pd.Timestamp(year=date.year, month=month, day=1) for month in range(1, 13)
         ]
-
-    def _standardize_string(self, s: str) -> str:
-        """Standardize a string by removing accents and converting to lowercase."""
-        return unidecode(s).lower()
