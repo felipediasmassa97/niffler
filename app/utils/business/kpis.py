@@ -1,19 +1,19 @@
 """Data KPIs."""
 
-import calendar
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Literal
 
 import pandas as pd
 import streamlit as st
 
 from utils.business.budget import CATEGORY_BUDGETS
-from utils.business.forecast import CATEGORY_MUST_PROJECT
 from utils.business.travel import TripBalanceCalculator
 from utils.globals import Account
 from utils.operators import Operator
-from utils.operators.filter import ThisYearFilter
+from utils.operators.filter import DateFilter, ThisYearFilter
+
+
+# fixit add percentages of target in parentheses in KPI cards (e.g. category KPIs)
 
 
 # List of KPIs to track
@@ -245,23 +245,6 @@ class KpiCategoryCalculator(KpiCalculator):
         }
 
     @property
-    def expenses_forecast_by_category(self) -> dict[str, float]:
-        """Expenses forecast by category."""
-        today = datetime.today()
-        elapsed_days = today.day
-        days_in_month = calendar.monthrange(today.year, today.month)[1]
-
-        return {
-            category: abs(
-                self.get_category_data(self.expenses, category)["Value"].sum()
-            )
-            / (elapsed_days / days_in_month)
-            if must_project is True
-            else "N/A"
-            for category, must_project in CATEGORY_MUST_PROJECT.items()
-        }
-
-    @property
     def expenses_fixed_categories_sorted(self) -> list[str]:
         """Fixed expenses categories sorted by value, descending."""
         return self.sort_categories(self.expenses_fixed_by_category)
@@ -314,6 +297,24 @@ class KpiCategoryCalculator(KpiCalculator):
             )
             for category in self.expenses["Category"].unique()
         }
+
+
+class KpiDateAdvancementCalculator:
+    """KPI date advancement calculator."""
+
+    def __init__(self, date_filter: DateFilter) -> None:
+        self.date_filter = date_filter
+
+    @property
+    def elapsed_date_perc(self) -> float:
+        """Elapsed date percentage."""
+        today = pd.Timestamp.today()
+        if today > self.date_filter.end_date:
+            return 1.0
+        return pd.Timedelta(today - self.date_filter.start_date).days / (
+            pd.Timedelta(self.date_filter.end_date - self.date_filter.start_date).days
+            + 1e-5
+        )
 
 
 class KpiVoucherCalculator(KpiCalculator):

@@ -1,5 +1,7 @@
 """KPIs page definition."""
 
+from copy import deepcopy
+
 import streamlit as st
 
 from utils.business.budget import CATEGORY_BUDGETS
@@ -10,12 +12,14 @@ from utils.business.kpis import (
     KpiCalculator,
     KpiTrendsCalculator,
     KpiCategoryCalculator,
+    KpiDateAdvancementCalculator,
     KpiVrCalculator,
     KpiVaCalculator,
     KpiMainTripCalculator,
 )
 from utils.operators import filter as fl
 from utils.operators import loader as ldr
+from utils.operators import transformer as tr
 
 
 PAGE_TITLE = "KPIs"
@@ -56,15 +60,21 @@ def kpis():
     # Load processed data
     loader = ldr.ProcessedLoader()
 
+    # Saving copies of loaders for different uses
+    loader_ = deepcopy(loader)
+
     # Data dilution toggle
     if st.checkbox("Dilute Costs", value=True):
         loader = Diluter(loader)
 
     # Apply date filter
-    date_filter = cmp_date_filter["filter"](loader)
+    DateFilter = cmp_date_filter["filter"]
+    date_filter = DateFilter(loader)
 
     # Instantiate KPI calculators
+
     calc = KpiCalculator(date_filter)
+
     calc_tr_3mo = KpiTrendsCalculator(
         KpiCalculator(date_filter),
         KpiCalculator(fl.Last3MonthsFilter(loader)),
@@ -77,9 +87,19 @@ def kpis():
         KpiCalculator(date_filter),
         KpiCalculator(fl.Last12MonthsFilter(loader)),
     )
+
     calc_cat = KpiCategoryCalculator(date_filter)
+    calc_cat_not_dil_without_extra = KpiCategoryCalculator(
+        tr.Remover(DateFilter(loader_), lambda row: row["Dilution"] is True)
+    )
+    calc_cat_not_dil_with_extra = KpiCategoryCalculator(DateFilter(loader_))
+    calc_cat_dil = KpiCategoryCalculator(Diluter(DateFilter(loader_)))
+
+    calc_adv = KpiDateAdvancementCalculator(date_filter)
+
     calc_vr = KpiVrCalculator(date_filter)
     calc_va = KpiVaCalculator(date_filter)
+
     calc_trip = KpiMainTripCalculator(loader)  # do not filter by date for trip budget
 
     st.header("Big Picture")
@@ -288,26 +308,30 @@ def kpis():
         for cat in exp_cats:
             st.markdown(f"**{cat}**")
 
-            cols = st.columns(3)
+            cols = st.columns(4)
             with cols[0]:
-                CardKpiCurrency(
-                    title="Actual Expense",
-                    value=exp_by_cat[cat],
-                    target=CATEGORY_BUDGETS[cat],
-                    higher_is_better=False,
+                CardKpiPercentage(
+                    title="Month Advancement (%)", value=calc_adv.elapsed_date_perc
                 ).card()
             with cols[1]:
-                CardKpiPercentage(
-                    title="Budget Utilization (%)",
-                    value=calc_cat.expenses_budget_utilization_perc_by_category[cat],
-                    target=1,
+                CardKpiCurrency(
+                    title="Actuals (Ordinary Only)",
+                    value=calc_cat_not_dil_without_extra.expenses_by_category[cat],
+                    target=CATEGORY_BUDGETS[cat],  # fixit correct without extraordinary
                     higher_is_better=False,
                 ).card()
             with cols[2]:
                 CardKpiCurrency(
-                    title="Forecast Expense",
-                    value=calc_cat.expenses_forecast_by_category[cat],
-                    target=CATEGORY_BUDGETS[cat],
+                    title="Actuals (With Extraordinary)",
+                    value=calc_cat_not_dil_with_extra.expenses_by_category[cat],
+                    target=CATEGORY_BUDGETS[cat],  # fixit correct with extraordinary
+                    higher_is_better=False,
+                ).card()
+            with cols[3]:
+                CardKpiCurrency(
+                    title="Actuals (Diluted)",
+                    value=calc_cat_dil.expenses_by_category[cat],
+                    target=CATEGORY_BUDGETS[cat],  # fixit correct diluted
                     higher_is_better=False,
                 ).card()
 

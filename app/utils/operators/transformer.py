@@ -1,7 +1,7 @@
 """Data transformers."""
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -62,3 +62,22 @@ class LabelAssigner(Transformer):
         data_ = data.copy()
         data_[self._label_col] = self._label_val
         return data_
+
+
+class Remover(Transformer):
+    """Data remover."""
+
+    def __init__(
+        self, operator: Operator, criterion: Callable[[pd.Series], bool]
+    ) -> None:
+        """Initialize the remover."""
+        self._criterion = criterion
+        super().__init__(operator)
+
+    def _transform_data(self, *data_list: list[pd.DataFrame]) -> pd.DataFrame:
+        """Remove data that does not meet the criterion."""
+        if len(data_list) != 1:
+            raise ValueError("Inverter expects a single DataFrame as input.")
+        data = data_list[0]
+        data_ = data.copy()
+        return data_[~data_.apply(self._criterion, axis=1)]
