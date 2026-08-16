@@ -206,7 +206,7 @@ class KpiCategoryCalculator(KpiCalculator):
         """Income by category."""
         return {
             category: self.get_category_data(self.income, category)["Value"].sum()
-            for category in self.income["Category"].unique()
+            for category in CATEGORY_BUDGETS.keys()
         }
 
     @property
@@ -215,7 +215,7 @@ class KpiCategoryCalculator(KpiCalculator):
         return {
             category: self.get_category_data(self.income, category)["Value"].sum()
             / (self.total_income + 1e-5)
-            for category in self.income["Category"].unique()
+            for category in CATEGORY_BUDGETS.keys()
         }
 
     @property
@@ -230,7 +230,7 @@ class KpiCategoryCalculator(KpiCalculator):
             category: abs(
                 self.get_category_data(self.expenses, category)["Value"].sum()
             )
-            for category in self.expenses["Category"].unique()
+            for category in CATEGORY_BUDGETS.keys()
         }
 
     @property
@@ -259,7 +259,7 @@ class KpiCategoryCalculator(KpiCalculator):
                     & (self.expenses["Tier"] == "Fixed")
                 ]["Value"].sum()
             )
-            for category in self.expenses["Category"].unique()
+            for category in CATEGORY_BUDGETS.keys()
         }
 
     @property
@@ -277,7 +277,7 @@ class KpiCategoryCalculator(KpiCalculator):
                     & (self.expenses["Tier"] == "Variable")
                 ]["Value"].sum()
             )
-            for category in self.expenses["Category"].unique()
+            for category in CATEGORY_BUDGETS.keys()
         }
 
     @property
@@ -295,7 +295,7 @@ class KpiCategoryCalculator(KpiCalculator):
                     & (self.expenses["Tier"] == "Lifestyle")
                 ]["Value"].sum()
             )
-            for category in self.expenses["Category"].unique()
+            for category in CATEGORY_BUDGETS.keys()
         }
 
 

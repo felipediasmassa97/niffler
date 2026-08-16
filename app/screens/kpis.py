@@ -52,6 +52,7 @@ def kpis():
             {"label": "This Month", "filter": fl.ThisMonthFilter},
             {"label": "Last Month", "filter": fl.LastMonthFilter},
             {"label": "Last 3 Months", "filter": fl.Last3MonthsFilter},
+            {"label": "Last Year", "filter": fl.LastYearFilter},
         ],
         index=0,
         format_func=lambda x: x["label"],
@@ -93,7 +94,7 @@ def kpis():
         tr.Remover(DateFilter(loader_), lambda row: row["Dilution"] is True)
     )
     calc_cat_not_dil_with_extra = KpiCategoryCalculator(DateFilter(loader_))
-    calc_cat_dil = KpiCategoryCalculator(Diluter(DateFilter(loader_)))
+    calc_cat_dil = KpiCategoryCalculator(DateFilter(Diluter(loader_)))
 
     calc_adv = KpiDateAdvancementCalculator(date_filter)
 
@@ -101,6 +102,10 @@ def kpis():
     calc_va = KpiVaCalculator(date_filter)
 
     calc_trip = KpiMainTripCalculator(loader)  # do not filter by date for trip budget
+
+    CardKpiPercentage(
+        title="Month Advancement (%)", value=calc_adv.elapsed_date_perc
+    ).card()
 
     st.header("Big Picture")
 
@@ -308,28 +313,27 @@ def kpis():
         for cat in exp_cats:
             st.markdown(f"**{cat}**")
 
-            cols = st.columns(4)
+            cols = st.columns(3)
             with cols[0]:
-                CardKpiPercentage(
-                    title="Month Advancement (%)", value=calc_adv.elapsed_date_perc
-                ).card()
-            with cols[1]:
                 CardKpiCurrency(
-                    title="Actuals (Ordinary Only)",
+                    title="Actuals",
+                    subtitle="Only Ordinary",
                     value=calc_cat_not_dil_without_extra.expenses_by_category[cat],
                     target=CATEGORY_BUDGETS[cat],  # fixit correct without extraordinary
                     higher_is_better=False,
                 ).card()
-            with cols[2]:
+            with cols[1]:
                 CardKpiCurrency(
-                    title="Actuals (With Extraordinary)",
+                    title="Actuals",
+                    subtitle="With Extraordinary",
                     value=calc_cat_not_dil_with_extra.expenses_by_category[cat],
                     target=CATEGORY_BUDGETS[cat],  # fixit correct with extraordinary
                     higher_is_better=False,
                 ).card()
-            with cols[3]:
+            with cols[2]:
                 CardKpiCurrency(
-                    title="Actuals (Diluted)",
+                    title="Actuals",
+                    subtitle="Diluted",
                     value=calc_cat_dil.expenses_by_category[cat],
                     target=CATEGORY_BUDGETS[cat],  # fixit correct diluted
                     higher_is_better=False,

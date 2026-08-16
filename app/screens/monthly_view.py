@@ -181,7 +181,7 @@ def monthly_view():
         ).chart
     )
 
-    st.write(loader.data)
+    st.dataframe(all_data.data)
 
 
 monthly_view_page = st.Page(monthly_view, title=PAGE_TITLE, url_path=PAGE_URL)
