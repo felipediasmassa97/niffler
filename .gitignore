@@ -207,4 +207,4 @@ marimo/_lsp/
 __marimo__/
 
 # Financial data
-app/data/**
+src/app/data/**
