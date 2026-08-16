@@ -1,10 +1,11 @@
 [project]
 name = "niffler"
 version = "0.1.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "openpyxl==3.1.2",
     "pandas==2.3.3",
     "plotly==6.5.0",
     "streamlit==1.60.*",
+    "unidecode==1.4.0",
 ]

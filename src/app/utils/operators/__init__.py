@@ -1,4 +1,4 @@
-"""Data utils."""
+"""Data operators utils."""
 
 from abc import ABC, abstractmethod
 
@@ -35,4 +35,4 @@ class Operator(ABC):
 # Rules:
 
 # - Actuals
-# - Effectives (dilluted)
+# - Effectives (diluted)
