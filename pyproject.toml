@@ -2,10 +2,39 @@
 name = "niffler"
 version = "0.1.0"
 requires-python = ">=3.13"
-dependencies = [
+dependencies = []
+
+[build-system]
+requires = [
+    "uv_build>=0.8.15,<0.9.0",
+    "setuptools",
+]
+build_backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = ["app"]
+
+[project.optional-dependencies]
+app = [
     "openpyxl==3.1.2",
     "pandas==2.3.3",
     "plotly==6.5.0",
     "streamlit==1.60.*",
     "unidecode==1.4.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4",
+]
+
+[tool.ruff]
+lint.select = ["ALL"]
+lint.ignore = ["D203", "D213", "TC002", "TC003", "COM812", "CPY001"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # allow assert statements in tests
+
+[tool.pytest.ini_options]
+norecursedirs = "cdk.out node_modules"
+timeout = 120
