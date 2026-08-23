@@ -1,8 +1,10 @@
 """Data loaders."""
 
+from io import BytesIO
+
 import pandas as pd
 
-from utils import get_latest_data_path
+from utils import get_latest_snapshot
 from utils.business.dilution import DilutionAssigner
 from utils.business.tiers import TierAssigner
 from utils.business.travel import TripBalanceCalculator
@@ -15,7 +17,9 @@ class Loader(Operator):
     def __init__(self):
         """Initialize the data loader."""
         self._data = pd.read_excel(
-            get_latest_data_path(), sheet_name="Receitas e Despesas", engine="openpyxl"
+            BytesIO(get_latest_snapshot()),
+            sheet_name="Receitas e Despesas",
+            engine="openpyxl",
         )
 
     @property

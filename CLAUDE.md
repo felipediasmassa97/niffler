@@ -20,7 +20,12 @@ per run.
 ```
 niffler/
 ├── docs/
-│   └── business_rules/              # human-readable business rule docs, one file per domain
+│   ├── business_rules/              # human-readable business rule docs, one file per domain
+│   └── implementation/001__infra/   # PRD for the AWS/Terraform infra (this file's "Data" section)
+├── infra/
+│   ├── bootstrap/                   # one-time AWS CLI script: tfstate buckets + IAM role chain
+│   ├── modules/                     # reusable Terraform modules (s3_bucket, iam)
+│   └── envs/                        # dev/demo/prod - independent Terraform root modules
 ├── src/
 │   └── app/
 │       ├── main.py                  # st.navigation entry point, registers all pages
@@ -40,9 +45,9 @@ niffler/
 │       │   │   └── transformer.py
 │       │   ├── charts.py            # Plotly chart wrapper classes
 │       │   └── globals.py           # Account enum (Mobills account names used in rules)
-│       └── data/                    # gitignored - Mobills xlsx exports live here, named YYYYMMDD.xlsx
+│       └── .streamlit/secrets.toml  # gitignored - AWS credentials, see "Data" below
 └── tests/
-    └── app/                         # pytest tests (currently a placeholder)
+    └── app/                         # pytest tests
 ```
 
 ## Architecture: the Operator pipeline
@@ -83,8 +88,9 @@ Run everything from the repo root unless noted. Requires `uv` (see
 # Install dependencies
 uv sync --all-extras --all-groups
 
-# Run the app (must run from src/app/ - screens/utils are imported as top-level packages,
-# and data loading resolves the relative path data/????????.xlsx from the cwd)
+# Run the app (must run from src/app/ - screens/utils are imported as top-level packages).
+# Requires a populated src/app/.streamlit/secrets.toml (AWS credentials) and network access
+# to AWS - the app reads its data from S3, not local disk. See "Data" below.
 cd src/app && uv run streamlit run main.py
 
 # Run tests
@@ -99,14 +105,22 @@ uvx ruff format
 
 ## Data
 
-- Weekly routine and file naming convention: see [`README.md`](README.md).
-- Input is a single Excel file per snapshot, at `src/app/data/YYYYMMDD.xlsx` (gitignored -
-  real financial data never gets committed). `get_latest_data_path()` (`utils/__init__.py`)
-  always picks the lexicographically-latest filename, i.e. the most recent date.
+- Weekly routine and upload convention: see [`README.md`](README.md).
+- Input is a single Excel snapshot per environment, read from S3 (never local disk) - see
+  [`docs/implementation/001__infra/PRD.md`](docs/implementation/001__infra/PRD.md) for the full
+  infra design (buckets, IAM, the two-hop role chain). `get_latest_snapshot()`
+  (`utils/__init__.py`) lists `<bucket>/snapshots/*` and picks the lexicographically-latest key
+  (i.e. the most recent `YYYYMMDD.xlsx`), then reads the object body - mirroring the old
+  local-disk `glob(...) + max()` behavior exactly. Bucket/prefix/region/credentials come from
+  `st.secrets["aws"]`, populated in `src/app/.streamlit/secrets.toml` locally (gitignored) or
+  the Streamlit Cloud Secrets UI when deployed.
+- Three environments exist (`dev`/`demo`/`prod`, each with its own bucket + IAM identity); local
+  development targets `dev`. Only `dev` currently has Streamlit secrets wired up - `demo`/`prod`
+  get theirs whenever they actually receive a Streamlit Cloud deployment.
 - Two sheets are read: `"Receitas e Despesas"` (all transactions, the main dataset) and
   `"Transfers"` (used only by `TripBalanceCalculator` for trip-fund transfers - see
   [`docs/business_rules/travel.md`](docs/business_rules/travel.md)).
-- `src/app/data/tiers.xlsx` / `tiers_old.xlsx` are present locally but unreferenced by any code
+- `tiers.xlsx` / `tiers_old.xlsx` (formerly under `src/app/data/`) are unreferenced by any code
   - tier assignment is fully rule-based in `tiers.py`, not read from a spreadsheet.
 
 ## Review cadence
