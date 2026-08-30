@@ -5,7 +5,7 @@
 `docs/implementation/001__infra/PRD.md` and `002__cdk_migration/PRD.md` set up the AWS side (S3
 data buckets, per-environment IAM identities) on the premise that the app itself would run on
 **Streamlit Community Cloud**, not AWS. This PRD documents that deployment: the app now runs
-publicly at `mojo-niffler.streamlit.app`, tracking the `main` branch, backed by the `prod`
+publicly at `niffler.streamlit.app`, tracking the `main` branch, backed by the `prod`
 environment's bucket and credentials.
 
 ## Environment choice
@@ -70,8 +70,8 @@ per `infra/README.md`.
 | Repository         | `felipediasmassa97/niffler`    |
 | Branch              | `main`                          |
 | Main file path      | `src/app/main.py`               |
-| Custom app URL      | `mojo-niffler.streamlit.app`    |
-| Python version      | 3.13                             |
+| Custom app URL      | `niffler.streamlit.app`         |
+| Python version      | 3.14                             |
 
 ## Data upload target
 

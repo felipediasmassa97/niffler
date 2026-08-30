@@ -5,7 +5,7 @@ Financial Tracking
 ## Live App
 
 The app is deployed on Streamlit Community Cloud at
-[mojo-niffler.streamlit.app](https://mojo-niffler.streamlit.app), tracking the `main` branch and
+[niffler.streamlit.app](https://niffler.streamlit.app), tracking the `main` branch and
 reading from the `prod` bucket. See
 [`docs/implementation/003__streamlit_cloud_deploy/PRD.md`](docs/implementation/003__streamlit_cloud_deploy/PRD.md)
 for how it's configured.

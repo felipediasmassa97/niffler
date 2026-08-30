@@ -10,7 +10,7 @@ the user has any reason to open it.
 
 ## Tech stack
 
-- Python >=3.13, managed with `uv`
+- Python >=3.14, managed with `uv`
 - Streamlit (`st.navigation` multi-page app) for the UI
 - pandas for data processing, `openpyxl` for reading `.xlsx`
 - Plotly for charts
@@ -131,7 +131,7 @@ ENVIRONMENT=dev uv run --no-sync npx cdk deploy --profile niffler-infra --no-not
   deployed.
 - Three environments exist (`dev`/`demo`/`prod`, each with its own bucket + IAM identity); local
   development targets `dev`. The live Streamlit Community Cloud deployment
-  (`mojo-niffler.streamlit.app`, see
+  (`niffler.streamlit.app`, see
   [`docs/implementation/003__streamlit_cloud_deploy/PRD.md`](docs/implementation/003__streamlit_cloud_deploy/PRD.md))
   targets `prod`. `demo` has no key minted and no deployment yet.
 - **Access keys are never managed by IaC** - CDK defines the IAM users only; keys are minted by
