@@ -4,12 +4,13 @@ Personal financial tracking dashboard. A Streamlit app reads a manually-exported
 report, applies a set of financial business rules (dilution, tiers, trip-fund accounting), and
 renders monthly/yearly views and KPI cards to support a recurring personal finance review.
 
-There is no backend, database, or auth - it's a single-user local app that reads one Excel file
-per run.
+There is no backend, database, or auth - it's a single-user app that reads one Excel snapshot from
+S3 per run. It's deployed publicly on Streamlit Community Cloud (see "Data" below), though only
+the user has any reason to open it.
 
 ## Tech stack
 
-- Python >=3.13, managed with `uv`
+- Python >=3.14, managed with `uv`
 - Streamlit (`st.navigation` multi-page app) for the UI
 - pandas for data processing, `openpyxl` for reading `.xlsx`
 - Plotly for charts
@@ -25,7 +26,8 @@ niffler/
 │   ├── business_rules/              # human-readable business rule docs, one file per domain
 │   └── implementation/
 │       ├── 001__infra/              # PRD for the original AWS infra design (buckets, IAM chain)
-│       └── 002__cdk_migration/      # PRD for the Terraform -> CDK migration (current IaC tool)
+│       ├── 002__cdk_migration/      # PRD for the Terraform -> CDK migration (current IaC tool)
+│       └── 003__streamlit_cloud_deploy/  # PRD for the Streamlit Community Cloud deployment
 ├── infra/
 │   ├── app.py                      # CDK entrypoint - one env's stack per invocation (ENVIRONMENT)
 │   ├── infra_stack.py              # InfraStack: data bucket + Streamlit app IAM user
@@ -50,6 +52,8 @@ niffler/
 │       │   │   └── transformer.py
 │       │   ├── charts.py            # Plotly chart wrapper classes
 │       │   └── globals.py           # Account enum (Mobills account names used in rules)
+│       ├── requirements.txt         # app deps for Streamlit Community Cloud, mirrors pyproject's
+│       │                            # `app` extra - see docs/implementation/003__streamlit_cloud_deploy
 │       └── .streamlit/secrets.toml  # gitignored - AWS credentials, see "Data" below
 └── tests/
     └── app/                         # pytest tests
@@ -126,8 +130,10 @@ ENVIRONMENT=dev uv run --no-sync npx cdk deploy --profile niffler-infra --no-not
   `src/app/.streamlit/secrets.toml` locally (gitignored) or the Streamlit Cloud Secrets UI when
   deployed.
 - Three environments exist (`dev`/`demo`/`prod`, each with its own bucket + IAM identity); local
-  development targets `dev`. Only `dev` currently has Streamlit secrets wired up - `demo`/`prod`
-  get theirs whenever they actually receive a Streamlit Cloud deployment.
+  development targets `dev`. The live Streamlit Community Cloud deployment
+  (`niffler.streamlit.app`, see
+  [`docs/implementation/003__streamlit_cloud_deploy/PRD.md`](docs/implementation/003__streamlit_cloud_deploy/PRD.md))
+  targets `prod`. `demo` has no key minted and no deployment yet.
 - **Access keys are never managed by IaC** - CDK defines the IAM users only; keys are minted by
   hand and stored in Parameter Store under `/config/niffler_<env>/` before being copied into
   Streamlit secrets. See `infra/README.md`'s credential runbook.
