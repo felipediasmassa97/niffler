@@ -3,7 +3,7 @@
 import streamlit as st
 
 
-def patrimony():
+def patrimony() -> None:
     """Patrimony page."""
     st.title("Patrimony")
     st.write("This is the Patrimony page.")

@@ -1,14 +1,12 @@
 """Monthly View page definition."""
 
 import streamlit as st
-
 from utils import charts as ch
 from utils.business.dilution import Diluter
 from utils.operators import aggregator as agg
 from utils.operators import filter as fl
 from utils.operators import loader as ldr
 from utils.operators import transformer as tr
-
 
 PAGE_TITLE = "Monthly View"
 PAGE_URL = "monthly"
@@ -17,7 +15,7 @@ TIER_ORDER = ["Fixed", "Variable", "Lifestyle"]
 TIER_COLORS = {"Fixed": "#1f77b4", "Variable": "#ff7f0e", "Lifestyle": "#2ca02c"}
 
 
-def monthly_view():
+def monthly_view() -> None:
     """Monthly View page."""
     st.title("Monthly View")
 

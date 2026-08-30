@@ -3,7 +3,7 @@
 import streamlit as st
 
 
-def yearly_view():
+def yearly_view() -> None:
     """Yearly View page."""
     st.title("Yearly View")
     st.write("This is the Yearly View page.")

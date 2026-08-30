@@ -3,24 +3,22 @@
 from copy import deepcopy
 
 import streamlit as st
-
 from utils.business.budget import CATEGORY_BUDGETS
 from utils.business.dilution import Diluter
 from utils.business.kpis import (
     CardKpiCurrency,
     CardKpiPercentage,
     KpiCalculator,
-    KpiTrendsCalculator,
     KpiCategoryCalculator,
     KpiDateAdvancementCalculator,
-    KpiVrCalculator,
-    KpiVaCalculator,
     KpiMainTripCalculator,
+    KpiTrendsCalculator,
+    KpiVaCalculator,
+    KpiVrCalculator,
 )
 from utils.operators import filter as fl
 from utils.operators import loader as ldr
 from utils.operators import transformer as tr
-
 
 PAGE_TITLE = "KPIs"
 PAGE_URL = "kpis"
@@ -40,7 +38,7 @@ TARGET_TRIP_BUDGET_OVERRUN = 0
 TARGET_TRIP_BUDGET_OVERRUN_PERC = 0
 
 
-def kpis():
+def kpis() -> None:
     """KPIs page."""
     st.title("KPIs")
 
@@ -69,13 +67,11 @@ def kpis():
         loader = Diluter(loader)
 
     # Apply date filter
-    DateFilter = cmp_date_filter["filter"]
-    date_filter = DateFilter(loader)
+    date_filter_cls = cmp_date_filter["filter"]
+    date_filter = date_filter_cls(loader)
 
     # Instantiate KPI calculators
-
     calc = KpiCalculator(date_filter)
-
     calc_tr_3mo = KpiTrendsCalculator(
         KpiCalculator(date_filter),
         KpiCalculator(fl.Last3MonthsFilter(loader)),
@@ -88,25 +84,37 @@ def kpis():
         KpiCalculator(date_filter),
         KpiCalculator(fl.Last12MonthsFilter(loader)),
     )
-
     calc_cat = KpiCategoryCalculator(date_filter)
     calc_cat_not_dil_without_extra = KpiCategoryCalculator(
-        tr.Remover(DateFilter(loader_), lambda row: row["Dilution"] is True)
+        tr.Remover(date_filter_cls(loader_), lambda row: row["Dilution"] is True)
     )
-    calc_cat_not_dil_with_extra = KpiCategoryCalculator(DateFilter(loader_))
-    calc_cat_dil = KpiCategoryCalculator(DateFilter(Diluter(loader_)))
-
+    calc_cat_not_dil_with_extra = KpiCategoryCalculator(date_filter_cls(loader_))
+    calc_cat_dil = KpiCategoryCalculator(date_filter_cls(Diluter(loader_)))
     calc_adv = KpiDateAdvancementCalculator(date_filter)
-
     calc_vr = KpiVrCalculator(date_filter)
     calc_va = KpiVaCalculator(date_filter)
-
     calc_trip = KpiMainTripCalculator(loader)  # do not filter by date for trip budget
 
     CardKpiPercentage(
         title="Month Advancement (%)", value=calc_adv.elapsed_date_perc
     ).card()
 
+    _render_big_picture(calc)
+    _render_time_trends(calc_tr_3mo, calc_tr_6mo, calc_tr_12mo)
+    _render_income_breakdown(calc, calc_cat)
+    _render_expenses_breakdown(calc, calc_cat)
+    _render_expenses_category_details(
+        calc_cat,
+        calc_cat_not_dil_without_extra,
+        calc_cat_not_dil_with_extra,
+        calc_cat_dil,
+    )
+    _render_vouchers(calc_vr, calc_va)
+    _render_travel(calc_trip)
+
+
+def _render_big_picture(calc: KpiCalculator) -> None:
+    """Render the Big Picture section: total income, expenses and net income."""
     st.header("Big Picture")
 
     cols = st.columns(2)
@@ -141,6 +149,13 @@ def kpis():
             higher_is_better=True,
         ).card()
 
+
+def _render_time_trends(
+    calc_tr_3mo: KpiTrendsCalculator,
+    calc_tr_6mo: KpiTrendsCalculator,
+    calc_tr_12mo: KpiTrendsCalculator,
+) -> None:
+    """Render the Time Trends section: income/expenses change vs. past averages."""
     st.header("Time Trends")
 
     cols = st.columns(3)
@@ -211,6 +226,11 @@ def kpis():
             higher_is_better=False,
         ).card()
 
+
+def _render_income_breakdown(
+    calc: KpiCalculator, calc_cat: KpiCategoryCalculator
+) -> None:
+    """Render the Income Breakdown section: fixed income and per-category income."""
     st.header("Income Breakdown")
 
     st.subheader("Fixed Income")
@@ -237,6 +257,11 @@ def kpis():
                     title="Income (%)", value=calc_cat.income_perc_by_category[cat]
                 ).card()
 
+
+def _render_expenses_breakdown(
+    calc: KpiCalculator, calc_cat: KpiCategoryCalculator
+) -> None:
+    """Render the Expenses Breakdown section: top categories and by-tier totals."""
     st.header("Expenses Breakdown")
 
     exp_cats = calc_cat.expenses_categories_sorted
@@ -307,10 +332,18 @@ def kpis():
                 title=cat, value=calc_cat.expenses_lifestyle_by_category[cat]
             ).card()
 
+
+def _render_expenses_category_details(
+    calc_cat: KpiCategoryCalculator,
+    calc_cat_not_dil_without_extra: KpiCategoryCalculator,
+    calc_cat_not_dil_with_extra: KpiCategoryCalculator,
+    calc_cat_dil: KpiCategoryCalculator,
+) -> None:
+    """Render the per-category expense breakdown vs. budget expander."""
     st.subheader("Category Breakdown")
 
     with st.expander("Per-category KPIs"):
-        for cat in exp_cats:
+        for cat in calc_cat.expenses_categories_sorted:
             st.markdown(f"**{cat}**")
 
             cols = st.columns(3)
@@ -339,6 +372,9 @@ def kpis():
                     higher_is_better=False,
                 ).card()
 
+
+def _render_vouchers(calc_vr: KpiVrCalculator, calc_va: KpiVaCalculator) -> None:
+    """Render the Vouchers section: VR/VA consumption vs. budget."""
     st.subheader("Vouchers")
 
     cols = st.columns(2)
@@ -373,6 +409,9 @@ def kpis():
             higher_is_better=False,
         ).card()
 
+
+def _render_travel(calc_trip: KpiMainTripCalculator) -> None:
+    """Render the Travel section: this year's trip budget overrun."""
     st.subheader("Travel")
 
     cols = st.columns(2)

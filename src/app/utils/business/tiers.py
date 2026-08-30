@@ -2,10 +2,20 @@
 
 import pandas as pd
 from unidecode import unidecode
-
 from utils.operators import Operator
 
 # fixit add most actionable, mid-actionable, least actionable tiers
+
+# Description substrings that force a "Fixed" tier regardless of the category default
+EDUCATION_FIXED_KEYWORDS = ["medcurso", "pos graduacao"]
+WORK_FIXED_KEYWORDS = [
+    "crea",
+    "crm",
+    "chatgpt",
+    "contabileasy mensalidade",
+    "darf",
+    "whitebook",
+]
 
 
 class TierAssigner(Operator):
@@ -18,6 +28,7 @@ class TierAssigner(Operator):
 
     @property
     def data(self) -> pd.DataFrame:
+        """Data with the `Tier` column assigned."""
         return self._data
 
     def _assign_tiers(self, row: pd.Series) -> str:
@@ -32,10 +43,13 @@ class TierAssigner(Operator):
         return self._assign_tiers_expense(category, description, tags)
 
     def _assign_tiers_income(
-        self, category: str, description: str, tags: list[str]
+        self, category: str, _description: str, _tags: list[str]
     ) -> bool:
-        """Assign tiers for income entries."""
+        """Assign tiers for income entries.
 
+        `description`/`tags` are unused here but kept for signature parity with
+        `_assign_tiers_expense`, since both are called uniformly from `_assign_tiers`.
+        """
         # Specific cases
         # fixit long-term evaluate fixed and variable differentiation for salary
 
@@ -51,27 +65,16 @@ class TierAssigner(Operator):
         self, category: str, description: str, tags: list[str]
     ) -> bool:
         """Assign tiers for expense entries."""
-
         # Specific cases
-        if category == "education" and "medcurso" in description:
-            return "Fixed"
-        if category == "education" and "pos graduacao" in description:
+        if category == "education" and any(
+            kw in description for kw in EDUCATION_FIXED_KEYWORDS
+        ):
             return "Fixed"
         if category == "health" and "bradesco saude" in description:
             return "Fixed"
         if category == "travel" and "work" in tags:
             return "Variable"
-        if category == "work" and "crea" in description:
-            return "Fixed"
-        if category == "work" and "crm" in description:
-            return "Fixed"
-        if category == "work" and "chatgpt" in description:
-            return "Fixed"
-        if category == "work" and "contabileasy mensalidade" in description:
-            return "Fixed"
-        if category == "work" and "darf" in description:
-            return "Fixed"
-        if category == "work" and "whitebook" in description:
+        if category == "work" and any(kw in description for kw in WORK_FIXED_KEYWORDS):
             return "Fixed"
 
         # General per-category assignment

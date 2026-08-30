@@ -1,17 +1,17 @@
 """Data KPIs."""
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 import streamlit as st
-
 from utils.business.budget import CATEGORY_BUDGETS
 from utils.business.travel import TripBalanceCalculator
 from utils.globals import Account
-from utils.operators import Operator
 from utils.operators.filter import DateFilter, ThisYearFilter
 
+if TYPE_CHECKING:
+    from utils.operators import Operator
 
 # fixit add percentages of target in parentheses in KPI cards (e.g. category KPIs)
 
@@ -19,9 +19,11 @@ from utils.operators.filter import DateFilter, ThisYearFilter
 # List of KPIs to track
 # (consolidate in new screen, not in monthly or yearly view)
 
-# Show in 2 sections (section in the left = default filter; section in the right = optional filter):
+# Show in 2 sections (section in the left = default filter; section in the right =
+# optional filter):
 # - This month (default)
-# - Enable custom date range picker (last year, last 6 months, last 3 months, last month, this month, this year, all time)
+# - Enable custom date range picker (last year, last 6 months, last 3 months, last
+#   month, this month, this year, all time)
 
 # Big Picture:
 # - Total income
@@ -32,10 +34,13 @@ from utils.operators.filter import DateFilter, ThisYearFilter
 
 # Time Trends:
 # - Expenses Inflation
-#   - Income inflation vs expenses inflation: this time range (filter) vs last 3 / 6 / 12 months (show all 3 to see different trends)
+#   - Income inflation vs expenses inflation: this time range (filter) vs last 3 / 6 /
+#     12 months (show all 3 to see different trends)
 #   - Target: Beginner = <5%, Ideal = <3%, Elite = <0%
-# - Incomes increase: this time range (filter) vs last 3 / 6 / 12 months (show all 3 to see different trends)
-# - Expenses increase: this time range (filter) vs last 3 / 6 / 12 months (show all 3 to see different trends)
+# - Incomes increase: this time range (filter) vs last 3 / 6 / 12 months (show all 3
+#   to see different trends)
+# - Expenses increase: this time range (filter) vs last 3 / 6 / 12 months (show all 3
+#   to see different trends)
 #   - Target: ???
 
 # Incomes Breakdown:
@@ -77,6 +82,7 @@ class KpiCalculator:
     """KPI calculator."""
 
     def __init__(self, operator: Operator) -> None:
+        """Initialize the KPI calculator."""
         self._data = operator.data
 
     @property
@@ -156,6 +162,7 @@ class KpiTrendsCalculator:
     def __init__(
         self, kpi_calc_current: KpiCalculator, kpi_calc_previous: KpiCalculator
     ) -> None:
+        """Initialize the KPI trends calculator."""
         self._kpi_calc_current = kpi_calc_current
         self._kpi_calc_previous = kpi_calc_previous
 
@@ -206,7 +213,7 @@ class KpiCategoryCalculator(KpiCalculator):
         """Income by category."""
         return {
             category: self.get_category_data(self.income, category)["Value"].sum()
-            for category in CATEGORY_BUDGETS.keys()
+            for category in CATEGORY_BUDGETS
         }
 
     @property
@@ -215,7 +222,7 @@ class KpiCategoryCalculator(KpiCalculator):
         return {
             category: self.get_category_data(self.income, category)["Value"].sum()
             / (self.total_income + 1e-5)
-            for category in CATEGORY_BUDGETS.keys()
+            for category in CATEGORY_BUDGETS
         }
 
     @property
@@ -230,7 +237,7 @@ class KpiCategoryCalculator(KpiCalculator):
             category: abs(
                 self.get_category_data(self.expenses, category)["Value"].sum()
             )
-            for category in CATEGORY_BUDGETS.keys()
+            for category in CATEGORY_BUDGETS
         }
 
     @property
@@ -259,7 +266,7 @@ class KpiCategoryCalculator(KpiCalculator):
                     & (self.expenses["Tier"] == "Fixed")
                 ]["Value"].sum()
             )
-            for category in CATEGORY_BUDGETS.keys()
+            for category in CATEGORY_BUDGETS
         }
 
     @property
@@ -277,7 +284,7 @@ class KpiCategoryCalculator(KpiCalculator):
                     & (self.expenses["Tier"] == "Variable")
                 ]["Value"].sum()
             )
-            for category in CATEGORY_BUDGETS.keys()
+            for category in CATEGORY_BUDGETS
         }
 
     @property
@@ -295,7 +302,7 @@ class KpiCategoryCalculator(KpiCalculator):
                     & (self.expenses["Tier"] == "Lifestyle")
                 ]["Value"].sum()
             )
-            for category in CATEGORY_BUDGETS.keys()
+            for category in CATEGORY_BUDGETS
         }
 
 
@@ -303,6 +310,7 @@ class KpiDateAdvancementCalculator:
     """KPI date advancement calculator."""
 
     def __init__(self, date_filter: DateFilter) -> None:
+        """Initialize the date advancement calculator."""
         self.date_filter = date_filter
 
     @property
@@ -320,7 +328,8 @@ class KpiDateAdvancementCalculator:
 class KpiVoucherCalculator(KpiCalculator):
     """KPI voucher calculator."""
 
-    def __init__(self, voucher_type, operator):
+    def __init__(self, voucher_type: Account, operator: Operator) -> None:
+        """Initialize the voucher calculator."""
         self.voucher_type = voucher_type
         super().__init__(operator)
 
@@ -346,6 +355,7 @@ class KpiVrCalculator(KpiVoucherCalculator):
     """KPI VR calculator."""
 
     def __init__(self, operator: Operator) -> None:
+        """Initialize the VR calculator."""
         super().__init__(Account.VR, operator)
 
 
@@ -353,6 +363,7 @@ class KpiVaCalculator(KpiVoucherCalculator):
     """KPI VA calculator."""
 
     def __init__(self, operator: Operator) -> None:
+        """Initialize the VA calculator."""
         super().__init__(Account.VA, operator)
 
 
@@ -360,6 +371,7 @@ class KpiMainTripCalculator(KpiCalculator):
     """KPI main trip calculator."""
 
     def __init__(self, operator: Operator) -> None:
+        """Initialize the main trip calculator."""
         # Enforce this year filter for main trip
         date_filter = ThisYearFilter(operator)
         self._data = date_filter.data
@@ -373,8 +385,8 @@ class KpiMainTripCalculator(KpiCalculator):
     def budget_overrun(self) -> float:
         """Budget overrun."""
         # TripBalanceCalculator creates a transaction with the overrun amount in the
-        # Account.TRIP_FUNDS
-        # Negative operator because in TripBalanceCalculator the balance is budget - actuals
+        # Account.TRIP_FUNDS. Negate it because in TripBalanceCalculator the balance
+        # is budget - actuals.
         return -self._data[
             (self._data["Category"] == "Travel")
             & (self._data["Account"] == Account.TRIP_FUNDS)
@@ -396,7 +408,7 @@ class CardKpi:
     kind: str = "currency"  # "currency" | "percentage"
     value: float | Literal["N/A"] | None = None
     target: float | Literal["N/A"] | None = None
-    higher_is_better: bool = None
+    higher_is_better: bool | None = None
 
     def _format_value(self, value: float | Literal["N/A"] | None) -> str:
         """Format value."""
@@ -406,7 +418,8 @@ class CardKpi:
             return f"R$ {value:,.0f}" if value is not None else None
         if self.kind == "percentage":
             return f"{value:.1%}" if value is not None else None
-        raise ValueError(f"Unknown kind: {self.kind}")
+        msg = f"Unknown kind: {self.kind}"
+        raise ValueError(msg)
 
     def _evaluate_kpi(self) -> str:
         """Evaluate KPI status and return (css_class, icon)."""
@@ -415,7 +428,8 @@ class CardKpi:
         if self.target is None:
             return ""
         if self.target is not None and self.higher_is_better is None:
-            raise ValueError("higher_is_better must be passed")
+            msg = "higher_is_better must be passed"
+            raise ValueError(msg)
         if (self.value >= self.target) == self.higher_is_better:
             return "kpi-card-met"
         return "kpi-card-not-met"
@@ -512,8 +526,10 @@ class CardKpiCurrency(CardKpi):
         subtitle: str = "",
         value: float | Literal["N/A"] | None = None,
         target: float | Literal["N/A"] | None = None,
-        higher_is_better: bool = None,
-    ):
+        *,
+        higher_is_better: bool | None = None,
+    ) -> None:
+        """Initialize the currency KPI card."""
         super().__init__(
             title=title,
             subtitle=subtitle,
@@ -533,8 +549,10 @@ class CardKpiPercentage(CardKpi):
         subtitle: str = "",
         value: float | Literal["N/A"] | None = None,
         target: float | Literal["N/A"] | None = None,
-        higher_is_better: bool = None,
-    ):
+        *,
+        higher_is_better: bool | None = None,
+    ) -> None:
+        """Initialize the percentage KPI card."""
         super().__init__(
             title=title,
             subtitle=subtitle,

@@ -1,11 +1,10 @@
 """Travel business rules."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from functools import cache
 from io import BytesIO
 
 import pandas as pd
-
 from utils import get_latest_snapshot
 from utils.globals import Account
 from utils.operators import Operator
@@ -14,14 +13,16 @@ from utils.operators import Operator
 class TripBalanceCalculator(Operator):
     """Data trip balance calculator.
 
-    Main trips are handled in a particular way, through a dedicated account in Mobills called "Trip
-    Funds":
-    - In the year N-1, a transaction of type "Transfer" is created from account "Wallet" to account
-    "Trip Funds", with the total amount intended for the trip. For visualization, this transaction
-    is shown in the app as an expense executed during year N.
-    - In the year N, during the trip, expenses are paid from the "Trip Funds" account. For
-    visualization, the difference between the actual trip expense and the budgeted trip expense is
-    shown in the app as an income or expense executed during year N.
+    Main trips are handled in a particular way, through a dedicated account in Mobills
+    called "Trip Funds":
+    - In the year N-1, a transaction of type "Transfer" is created from account
+    "Wallet" to account "Trip Funds", with the total amount intended for the trip.
+    For visualization, this transaction is shown in the app as an expense executed
+    during year N.
+    - In the year N, during the trip, expenses are paid from the "Trip Funds"
+    account. For visualization, the difference between the actual trip expense and
+    the budgeted trip expense is shown in the app as an income or expense executed
+    during year N.
 
     This operator adjusts the data to reflect this logic.
     """
@@ -33,6 +34,7 @@ class TripBalanceCalculator(Operator):
 
     @property
     def data(self) -> pd.DataFrame:
+        """Data with trip funds transfers/expenses replaced by the yearly balance."""
         return self._data
 
     @classmethod
@@ -49,8 +51,8 @@ class TripBalanceCalculator(Operator):
     def get_budget(cls, year: int) -> float:
         """Get trip budget from year N-1.
 
-        Trip budget for year N is defined as the sum of all transfer transactions to "Trip Funds"
-        account in year N-1.
+        Trip budget for year N is defined as the sum of all transfer transactions to
+        "Trip Funds" account in year N-1.
         """
         transfer_data = cls._load_transfer_data()
         return transfer_data[
@@ -61,8 +63,8 @@ class TripBalanceCalculator(Operator):
     def sum_actuals(self, year: int) -> float:
         """Sum actual trip expenses from year N.
 
-        Trip actual expenses for year N are defined as the sum of all expenses in "Travel" category paid
-        from "Trip Funds" account in year N.
+        Trip actual expenses for year N are defined as the sum of all expenses in
+        "Travel" category paid from "Trip Funds" account in year N.
         """
         travel_data = self.raw_data[
             (self.raw_data["Account"] == Account.TRIP_FUNDS)
@@ -78,13 +80,13 @@ class TripBalanceCalculator(Operator):
     def _adjust_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """Adjust data to include trip balance.
 
-        Remove trip funds transfer transaction (budget) from year N-1; remove actual trip expenses
-        from year N; and add balance transaction to year N.
+        Remove trip funds transfer transaction (budget) from year N-1; remove actual
+        trip expenses from year N; and add balance transaction to year N.
         """
         data_ = data.copy()
 
         # Iterate over years to adjust data
-        for year in range(2024, datetime.now().year + 1):
+        for year in range(2024, datetime.now(tz=UTC).year + 1):
             # Remove Trip Funds account's Travel expenses from year N
             data_ = data_[
                 ~(
