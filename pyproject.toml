@@ -16,11 +16,16 @@ module-name = ["app"]
 
 [project.optional-dependencies]
 app = [
+    "boto3==1.40.*",
     "openpyxl==3.1.2",
     "pandas==2.3.3",
     "plotly==6.5.0",
     "streamlit==1.60.*",
     "unidecode==1.4.0",
+]
+infra = [
+    "aws-cdk-lib==2.266.0",
+    "constructs>=10.0.0,<11.0.0",
 ]
 
 [dependency-groups]
@@ -37,4 +42,5 @@ lint.ignore = ["D203", "D213", "TC002", "TC003", "COM812", "CPY001"]
 
 [tool.pytest.ini_options]
 norecursedirs = "cdk.out node_modules"
+pythonpath = [".", "src/app"]
 timeout = 120

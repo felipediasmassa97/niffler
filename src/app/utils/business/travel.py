@@ -2,10 +2,11 @@
 
 from datetime import datetime
 from functools import cache
+from io import BytesIO
 
 import pandas as pd
 
-from utils import get_latest_data_path
+from utils import get_latest_snapshot
 from utils.globals import Account
 from utils.operators import Operator
 
@@ -39,7 +40,7 @@ class TripBalanceCalculator(Operator):
     def _load_transfer_data(cls) -> pd.DataFrame:
         """Load transfer data from the Transfers sheet."""
         data = pd.read_excel(
-            get_latest_data_path(), sheet_name="Transfers", engine="openpyxl"
+            BytesIO(get_latest_snapshot()), sheet_name="Transfers", engine="openpyxl"
         )
         data["Year"] = pd.to_datetime(data["Date"], format="%d/%m/%Y").dt.year
         return data

@@ -208,3 +208,10 @@ __marimo__/
 
 # Financial data
 src/app/data/**
+
+# Streamlit secrets (AWS credentials)
+**/.streamlit/secrets.toml
+
+# AWS CDK
+cdk.out/
+node_modules/

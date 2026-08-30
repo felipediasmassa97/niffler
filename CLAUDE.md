@@ -14,13 +14,23 @@ per run.
 - pandas for data processing, `openpyxl` for reading `.xlsx`
 - Plotly for charts
 - `unidecode` for accent/case-insensitive category matching
+- AWS CDK (Python) for infra IaC, deployed with the npm-installed CDK CLI
 
 ## Project structure
 
 ```
 niffler/
+├── cdk.json, package.json, .nvmrc   # CDK app entrypoint config + pinned CDK CLI
 ├── docs/
-│   └── business_rules/              # human-readable business rule docs, one file per domain
+│   ├── business_rules/              # human-readable business rule docs, one file per domain
+│   └── implementation/
+│       ├── 001__infra/              # PRD for the original AWS infra design (buckets, IAM chain)
+│       └── 002__cdk_migration/      # PRD for the Terraform -> CDK migration (current IaC tool)
+├── infra/
+│   ├── app.py                      # CDK entrypoint - one env's stack per invocation (ENVIRONMENT)
+│   ├── infra_stack.py              # InfraStack: data bucket + Streamlit app IAM user
+│   ├── resource_utils.py           # name/account/region accessors - source of truth for names
+│   └── bootstrap/                  # one-time, admin-only: IAM role chain + CDKToolkit stack
 ├── src/
 │   └── app/
 │       ├── main.py                  # st.navigation entry point, registers all pages
@@ -40,9 +50,9 @@ niffler/
 │       │   │   └── transformer.py
 │       │   ├── charts.py            # Plotly chart wrapper classes
 │       │   └── globals.py           # Account enum (Mobills account names used in rules)
-│       └── data/                    # gitignored - Mobills xlsx exports live here, named YYYYMMDD.xlsx
+│       └── .streamlit/secrets.toml  # gitignored - AWS credentials, see "Data" below
 └── tests/
-    └── app/                         # pytest tests (currently a placeholder)
+    └── app/                         # pytest tests
 ```
 
 ## Architecture: the Operator pipeline
@@ -83,8 +93,9 @@ Run everything from the repo root unless noted. Requires `uv` (see
 # Install dependencies
 uv sync --all-extras --all-groups
 
-# Run the app (must run from src/app/ - screens/utils are imported as top-level packages,
-# and data loading resolves the relative path data/????????.xlsx from the cwd)
+# Run the app (must run from src/app/ - screens/utils are imported as top-level packages).
+# Requires a populated src/app/.streamlit/secrets.toml (AWS credentials) and network access
+# to AWS - the app reads its data from S3, not local disk. See "Data" below.
 cd src/app && uv run streamlit run main.py
 
 # Run tests
@@ -95,18 +106,46 @@ uvx ruff check
 
 # Format
 uvx ruff format
+
+# Infra: diff/deploy one environment's CDK stack (see infra/README.md for the full runbook)
+ENVIRONMENT=dev uv run --no-sync npx cdk diff --profile niffler-infra --no-notices
+ENVIRONMENT=dev uv run --no-sync npx cdk deploy --profile niffler-infra --no-notices
 ```
 
 ## Data
 
-- Weekly routine and file naming convention: see [`README.md`](README.md).
-- Input is a single Excel file per snapshot, at `src/app/data/YYYYMMDD.xlsx` (gitignored -
-  real financial data never gets committed). `get_latest_data_path()` (`utils/__init__.py`)
-  always picks the lexicographically-latest filename, i.e. the most recent date.
+- Weekly routine and upload convention: see [`README.md`](README.md).
+- Input is a single Excel snapshot per environment, read from S3 (never local disk) - see
+  [`docs/implementation/001__infra/PRD.md`](docs/implementation/001__infra/PRD.md) for the
+  original infra design (buckets, IAM, the two-hop role chain) and
+  [`docs/implementation/002__cdk_migration/PRD.md`](docs/implementation/002__cdk_migration/PRD.md)
+  for the current IaC tool (AWS CDK). `get_latest_snapshot()` (`utils/__init__.py`) lists
+  `<bucket>/snapshots/*` and picks the lexicographically-latest key (i.e. the most recent
+  `YYYYMMDD.xlsx`), then reads the object body - mirroring the old local-disk `glob(...) + max()`
+  behavior exactly. Bucket/prefix/region/credentials come from `st.secrets["aws"]`, populated in
+  `src/app/.streamlit/secrets.toml` locally (gitignored) or the Streamlit Cloud Secrets UI when
+  deployed.
+- Three environments exist (`dev`/`demo`/`prod`, each with its own bucket + IAM identity); local
+  development targets `dev`. Only `dev` currently has Streamlit secrets wired up - `demo`/`prod`
+  get theirs whenever they actually receive a Streamlit Cloud deployment.
+- **Access keys are never managed by IaC** - CDK defines the IAM users only; keys are minted by
+  hand and stored in Parameter Store under `/config/niffler_<env>/` before being copied into
+  Streamlit secrets. See `infra/README.md`'s credential runbook.
+- `niffler-infra-execution-role` is assumed **only** by CloudFormation - never directly by a
+  human, matching `tfmcdigital/edap-iam`'s pattern. There is no `niffler-infra-exec` CLI profile;
+  manual operations (`aws s3 cp`, `aws ssm put-parameter`) run as `--profile niffler-infra`
+  directly, which carries its own scoped S3/SSM permissions for exactly that purpose.
+- The `AppName = niffler` tag on both chain roles (`niffler-infra`,
+  `niffler-infra-execution-role`) is load-bearing - every IAM statement in
+  `infra/bootstrap/bootstrap.sh` is scoped by `${aws:PrincipalTag/AppName}` rather than a
+  hand-enumerated ARN list. An untagged role is denied everything.
+- The `CDKToolkit` stack (CDK's own deploy-time infra: staging bucket, IAM roles, ECR) is
+  account-level infrastructure, not defined anywhere in `infra/` - see
+  `infra/bootstrap/README.md` for how and when it's (re)created.
 - Two sheets are read: `"Receitas e Despesas"` (all transactions, the main dataset) and
   `"Transfers"` (used only by `TripBalanceCalculator` for trip-fund transfers - see
   [`docs/business_rules/travel.md`](docs/business_rules/travel.md)).
-- `src/app/data/tiers.xlsx` / `tiers_old.xlsx` are present locally but unreferenced by any code
+- `tiers.xlsx` / `tiers_old.xlsx` (formerly under `src/app/data/`) are unreferenced by any code
   - tier assignment is fully rule-based in `tiers.py`, not read from a spreadsheet.
 
 ## Review cadence
