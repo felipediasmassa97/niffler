@@ -1,0 +1,48 @@
+name: Infra deploy
+description: Diff and deploy the CDK infra stack for one environment
+
+inputs:
+  environment:
+    description: Target environment (dev, demo, prod)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v6
+      with:
+        role-to-assume: arn:aws:iam::309917471802:role/niffler-infra
+        aws-region: us-east-2
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version-file: .python-version
+
+    - uses: astral-sh/setup-uv@v7
+
+    - name: Install dependencies
+      shell: bash
+      run: uv sync --all-extras --all-groups
+
+    - uses: actions/setup-node@v5
+      with:
+        node-version-file: .nvmrc
+
+    - name: Install CDK CLI
+      shell: bash
+      run: npm ci
+
+    - name: cdk diff
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+      run: uv run --no-sync npx cdk diff --no-notices
+
+    - name: cdk deploy
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+      run: uv run --no-sync npx cdk deploy --require-approval never --no-notices

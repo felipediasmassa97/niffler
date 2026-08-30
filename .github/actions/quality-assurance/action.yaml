@@ -1,0 +1,25 @@
+name: Quality assurance
+description: Lint the codebase with ruff (check + format)
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version-file: .python-version
+
+    - uses: astral-sh/setup-uv@v7
+
+    - name: Install dependencies
+      shell: bash
+      run: uv sync --all-extras --all-groups
+
+    - name: Ruff check
+      shell: bash
+      run: uvx ruff check
+
+    - name: Ruff format check
+      shell: bash
+      run: uvx ruff format --check

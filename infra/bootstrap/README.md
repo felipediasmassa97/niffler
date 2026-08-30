@@ -8,14 +8,20 @@ to live outside the thing it bootstraps.
 
 ## What it creates
 
-### `bootstrap.sh` - the two chain roles
+### `bootstrap.sh` - the GitHub OIDC provider + the two chain roles
 
-1. `niffler-infra` - assumable only by the `fmassa` SSO session (account-root principal, gated by
+1. `niffler-infra` - assumable by the `fmassa` SSO session (account-root principal, gated by
    an `ArnLike` condition on the `AdministratorAccess` permission set - this survives the
-   permission set being recreated, unlike a hardcoded role ARN). Drives CloudFormation, and also
-   carries its own S3 object CRUD and Parameter Store permissions for the manual CLI path
-   (`aws s3 cp` uploads, the access-key runbook) - see "A deliberate deviation from edap-iam"
-   below.
+   permission set being recreated, unlike a hardcoded role ARN), **and** by GitHub Actions CI for
+   the `felipediasmassa97/niffler` repo, via a second trust statement federated through the
+   account's GitHub OIDC provider (`token.actions.githubusercontent.com`, created by this same
+   script) and scoped with a `StringLike` condition on the OIDC `sub` claim
+   (`repo:felipediasmassa97/niffler:*`) - no other GitHub repo can assume this role. Drives
+   CloudFormation, and also carries its own S3 object CRUD and Parameter Store permissions for the
+   manual CLI path (`aws s3 cp` uploads, the access-key runbook) - see "A deliberate deviation from
+   edap-iam" below. CI gets exactly the same permissions as the human path (no separate CI role) -
+   a deliberate choice to keep one role instead of two, since GitHub's OIDC `sub` scoping already
+   restricts *who* can assume it to this one repo.
 2. `niffler-infra-execution-role` - assumed **only** by the CloudFormation service principal, as
    every stack's service role. The only identity that can manage niffler's actual resources: the
    data buckets and the `niffler-<env>-app` IAM users. Never assumable by a human, matching
@@ -28,6 +34,7 @@ ARN list. An untagged role is denied everything. Re-verify after any change:
 ```bash
 aws iam list-role-tags --role-name niffler-infra --profile fmassa
 aws iam list-role-tags --role-name niffler-infra-execution-role --profile fmassa
+aws iam get-role --role-name niffler-infra --profile fmassa   # both trust statements
 ```
 
 Neither policy contains an unbounded wildcard `Action` or `Resource` - the two narrow, documented
