@@ -38,7 +38,11 @@ lint.select = ["ALL"]
 lint.ignore = ["D203", "D213", "TC002", "TC003", "COM812", "CPY001"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101"]  # allow assert statements in tests
+# S101: allow assert statements in tests
+# ANN401: fixture factories (make_operator, mock_transfers, ...) legitimately take/build
+#   heterogeneous row dicts - a concrete union would be less readable than Any here
+# PLR2004: expected literals in an assertion are the test, not a magic number to name
+"tests/*" = ["S101", "ANN401", "PLR2004"]
 
 [tool.pytest.ini_options]
 norecursedirs = "cdk.out node_modules"
