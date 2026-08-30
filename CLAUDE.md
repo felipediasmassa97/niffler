@@ -57,6 +57,9 @@ niffler/
 │       └── .streamlit/secrets.toml  # gitignored - AWS credentials, see "Data" below
 └── tests/
     └── app/                         # pytest tests
+        └── test_screens.py         # UI regression: every screen, every widget state,
+                                     # no exception - see "Before committing" below;
+                                     # needs AWS secrets, fails (not skips) without them
 ```
 
 ## Architecture: the Operator pipeline
@@ -116,6 +119,30 @@ ENVIRONMENT=dev uv run --no-sync npx cdk diff --profile niffler-infra --no-notic
 ENVIRONMENT=dev uv run --no-sync npx cdk deploy --profile niffler-infra --no-notices
 ```
 
+## Before committing
+
+Run from the repo root:
+
+```bash
+uvx ruff check
+uvx ruff format --check
+uv run pytest tests/ -v
+```
+
+`uv run pytest tests/` includes `tests/app/test_screens.py`, which loads every screen
+(Monthly View, Yearly View, KPIs, Patrimony, Validation) through Streamlit's `AppTest`
+runner and cycles every checkbox/selectbox on it, asserting nothing raises - this is
+what catches a bug like a per-category dict (dilution, tiers, budget) missing an entry,
+which only breaks at render time for a specific screen and widget state, not at import
+time. It requires a populated `src/app/.streamlit/secrets.toml` (AWS credentials) and
+network access to AWS, same as running the app locally (see "Data" below) - it fails
+outright, not skips, if secrets aren't set up.
+
+Run it explicitly after touching anything under `src/app/screens/`,
+`src/app/utils/operators/`, `src/app/utils/business/`, or `src/app/utils/charts.py`,
+even before running the full suite - it's the one test file that actually exercises the
+UI layer.
+
 ## Data
 
 - Weekly routine and upload convention: see [`README.md`](README.md).
@@ -168,7 +195,9 @@ and the category actionability ranking it references (also documented in
   [`docs/business_rules/kpis.md`](docs/business_rules/kpis.md) for the intended values.
 - `CATEGORY_BUDGETS` is a flat placeholder (every category = R$1,000).
 - No custom date-range picker; only preset ranges (This Month, Last 3 Months, etc.).
-- No automated tests covering business rules yet (`tests/app/test_app.py` is a placeholder).
+- No automated tests covering business rule *calculations* yet (`tests/app/test_app.py`
+  is a placeholder) - `tests/app/test_screens.py` only asserts every screen renders
+  without raising, not that its numbers are correct.
 
 ## Documentation upkeep
 

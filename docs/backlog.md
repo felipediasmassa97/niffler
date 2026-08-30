@@ -6,6 +6,8 @@
 
 - [ ] Add view with both non-diluted and diluted (in same page, side-by-side)
 
+- [ ] Flag data quality issues in app (e.g. wrong category, missing tag, wrong trip)
+
 ## Data Pipeline
 
 - [ ] Automated data project
@@ -55,7 +57,7 @@
   - Freeze mock data locally
   - Have Claude set up consistency tests for each business rule
 
-- [ ] Create playwright tests
+- [x] Create playwright tests
   - Goal: assert app renders without error
 
 ## User Experience
