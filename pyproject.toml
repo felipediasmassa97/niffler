@@ -23,6 +23,10 @@ app = [
     "streamlit==1.60.*",
     "unidecode==1.4.0",
 ]
+infra = [
+    "aws-cdk-lib==2.266.0",
+    "constructs>=10.0.0,<11.0.0",
+]
 
 [dependency-groups]
 dev = [
@@ -38,5 +42,5 @@ lint.ignore = ["D203", "D213", "TC002", "TC003", "COM812", "CPY001"]
 
 [tool.pytest.ini_options]
 norecursedirs = "cdk.out node_modules"
-pythonpath = ["src/app"]
+pythonpath = [".", "src/app"]
 timeout = 120

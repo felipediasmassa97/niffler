@@ -1,5 +1,0 @@
-environment          = "demo"
-region               = "us-east-2"
-account_id           = "309917471802"
-data_bucket_name     = "niffler-demo-data-309917471802"
-streamlit_user_name  = "niffler-streamlit-app-demo"

@@ -11,14 +11,14 @@ Financial Tracking
 - Upload it to S3, named `YYYYMMDD.xlsx`, under the `dev` bucket's `snapshots/` prefix (this step
   is manual - see `docs/implementation/001__infra/PRD.md`):
   ```bash
-  aws s3 cp <report>.xlsx s3://niffler-dev-data-309917471802/snapshots/ --profile niffler-infra-exec
+  aws s3 cp <report>.xlsx s3://niffler-dev-data-309917471802/snapshots/ --profile niffler-infra
   ```
 
 ## Running
 
 The app reads its data from S3 - no local file is needed. Requires a populated
-`src/app/.streamlit/secrets.toml` (see `infra/envs/dev`'s Terraform outputs for the
-`niffler-streamlit-app-dev` credential) and network access to AWS.
+`src/app/.streamlit/secrets.toml` (see `infra/README.md`'s credential runbook for the
+`niffler-dev-app` access key) and network access to AWS.
 
 ```bash
 uv sync --all-extras --all-groups

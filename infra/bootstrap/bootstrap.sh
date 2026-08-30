@@ -1,209 +1,296 @@
 #!/usr/bin/env bash
-# One-time AWS bootstrap for niffler's infra: creates the three per-environment
-# Terraform state buckets and the two-hop IAM role chain (niffler-infra-role ->
-# niffler-infra-execution-role). Run once, manually, with the raw admin SSO
-# profile - see docs/implementation/001__infra/PRD.md "Bootstrap" section for
-# why this lives outside the infra/ Terraform project.
+# One-time AWS bootstrap for niffler's infra: creates the two-hop IAM role chain
+# (niffler-infra -> niffler-infra-execution-role) that AWS CDK deploys through.
+# Run manually with the raw admin SSO profile - see
+# docs/implementation/002__cdk_migration/PRD.md for why this layer lives outside
+# the CDK app.
 #
 # Usage: bash infra/bootstrap/bootstrap.sh
 #
-# Not idempotent end-to-end: if it fails partway, inspect which resources
-# already exist (see README.md "Re-running after a partial failure") and
-# comment out the corresponding steps before re-running.
+# Idempotent and re-runnable: every step either creates or updates in place.
+
+# fixit move bootstrap to dedicated repository (similar to edap-iam)
+# The objective of bootstrap is to create infra and infra execution roles for new apps
+# This is similar to what Gandalf does
+# Dispatch a scout agent on Gandalf repos to understand how Gandalf manages it, and
+# try to replicate it here
+# We should have one repository that governs policies for the apps we own in AWS,
+# similar to edap-iam
 
 set -euo pipefail
 
 SSO_PROFILE="fmassa"
 ACCOUNT_ID="309917471802"
-REGION="us-east-2"
-ENVIRONMENTS=(dev demo prod)
-INFRA_ROLE_NAME="niffler-infra-role"
+APP_NAME="niffler"
+INFRA_ROLE_NAME="niffler-infra"
 EXECUTION_ROLE_NAME="niffler-infra-execution-role"
 INFRA_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${INFRA_ROLE_NAME}"
-EXECUTION_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${EXECUTION_ROLE_NAME}"
 
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "$WORKDIR"' EXIT
 
 echo "==> Verifying SSO session (profile: ${SSO_PROFILE})"
-CALLER_IDENTITY="$(aws sts get-caller-identity --profile "$SSO_PROFILE" --output json)"
-CALLER_ACCOUNT="$(echo "$CALLER_IDENTITY" | python3 -c 'import json,sys; print(json.load(sys.stdin)["Account"])')"
+CALLER_ACCOUNT="$(aws sts get-caller-identity --profile "$SSO_PROFILE" --query Account --output text)"
 if [[ "$CALLER_ACCOUNT" != "$ACCOUNT_ID" ]]; then
   echo "ERROR: profile ${SSO_PROFILE} resolves to account ${CALLER_ACCOUNT}, expected ${ACCOUNT_ID}." >&2
   exit 1
 fi
 
-CALLER_ARN="$(echo "$CALLER_IDENTITY" | python3 -c 'import json,sys; print(json.load(sys.stdin)["Arn"])')"
-# CALLER_ARN looks like:
-#   arn:aws:sts::309917471802:assumed-role/AWSReservedSSO_AdministratorAccess_<hash>/<session>
-# The trust-policy principal needs the underlying IAM role ARN, not the assumed-role
-# session ARN. SSO permission-set roles live under a path that includes the SSO region
-# (/aws-reserved/sso.amazonaws.com/<region>/...), which isn't safe to reconstruct by hand -
-# look it up via IAM instead.
-SSO_ROLE_NAME="$(echo "$CALLER_ARN" | sed -E 's#.*assumed-role/([^/]+)/.*#\1#')"
-SSO_ROLE_ARN="$(aws iam list-roles --profile "$SSO_PROFILE" \
-  --query "Roles[?RoleName=='${SSO_ROLE_NAME}'].Arn" --output text)"
-if [[ -z "$SSO_ROLE_ARN" ]]; then
-  echo "ERROR: could not resolve IAM role ARN for SSO role name ${SSO_ROLE_NAME}." >&2
-  exit 1
-fi
-echo "    Resolved SSO permission-set role ARN: ${SSO_ROLE_ARN}"
-
-echo "==> Creating per-environment Terraform state buckets"
-for env in "${ENVIRONMENTS[@]}"; do
-  bucket="niffler-${env}-tfstate-${ACCOUNT_ID}"
-  if aws s3api head-bucket --bucket "$bucket" --profile "$SSO_PROFILE" >/dev/null 2>&1; then
-    echo "    ${bucket} already exists, skipping creation"
-  else
-    echo "    Creating ${bucket}"
-    aws s3api create-bucket \
-      --bucket "$bucket" \
-      --region "$REGION" \
-      --create-bucket-configuration LocationConstraint="$REGION" \
-      --profile "$SSO_PROFILE" >/dev/null
-  fi
-  aws s3api put-bucket-versioning \
-    --bucket "$bucket" \
-    --versioning-configuration Status=Enabled \
-    --profile "$SSO_PROFILE"
-  aws s3api put-bucket-encryption \
-    --bucket "$bucket" \
-    --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}' \
-    --profile "$SSO_PROFILE"
-  aws s3api put-public-access-block \
-    --bucket "$bucket" \
-    --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true \
-    --profile "$SSO_PROFILE"
-done
-
 echo "==> Writing IAM policy documents"
 
+# Account-root principal + ArnLike, rather than the SSO permission-set role ARN
+# directly: the permission-set role is recreated (with a new hash) whenever the
+# permission set is edited, which would silently break a hardcoded principal
 cat > "${WORKDIR}/infra-role-trust.json" <<EOF
 {
   "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": { "AWS": "${SSO_ROLE_ARN}" },
-    "Action": "sts:AssumeRole"
-  }]
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::${ACCOUNT_ID}:root" },
+      "Action": ["sts:AssumeRole", "sts:TagSession"],
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:aws:iam::${ACCOUNT_ID}:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_AdministratorAccess_*"
+        }
+      }
+    }
+  ]
 }
 EOF
 
+# Every resource ARN below is scoped by \${aws:PrincipalTag/AppName}, which resolves
+# from the AppName tag applied to the role further down - the tag is load-bearing,
+# and an untagged role matches nothing and is denied everything
 cat > "${WORKDIR}/infra-role-permissions.json" <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "TerraformStateAccessAllEnvs",
+      "Sid": "CloudFormationPermissions",
       "Effect": "Allow",
-      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"],
+      "Action": [
+        "cloudformation:CreateChangeSet",
+        "cloudformation:DeleteChangeSet",
+        "cloudformation:DescribeChangeSet",
+        "cloudformation:ExecuteChangeSet",
+        "cloudformation:CreateStack",
+        "cloudformation:UpdateStack",
+        "cloudformation:DeleteStack",
+        "cloudformation:ContinueUpdateRollback",
+        "cloudformation:CancelUpdateStack",
+        "cloudformation:UpdateTerminationProtection",
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:GetTemplate"
+      ],
+      "Resource": "arn:aws:cloudformation:*:${ACCOUNT_ID}:stack/\${aws:PrincipalTag/AppName}*/*"
+    },
+    {
+      "Sid": "CliPermissions",
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    },
+    {
+      "Sid": "CliStagingBucket",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject*", "s3:GetBucket*", "s3:List*"],
       "Resource": [
-        "arn:aws:s3:::niffler-dev-tfstate-${ACCOUNT_ID}",
-        "arn:aws:s3:::niffler-dev-tfstate-${ACCOUNT_ID}/*",
-        "arn:aws:s3:::niffler-demo-tfstate-${ACCOUNT_ID}",
-        "arn:aws:s3:::niffler-demo-tfstate-${ACCOUNT_ID}/*",
-        "arn:aws:s3:::niffler-prod-tfstate-${ACCOUNT_ID}",
-        "arn:aws:s3:::niffler-prod-tfstate-${ACCOUNT_ID}/*"
+        "arn:aws:s3:::cdk-toolkitv2-assets-${ACCOUNT_ID}-*",
+        "arn:aws:s3:::cdk-toolkitv2-assets-${ACCOUNT_ID}-*/*"
       ]
     },
     {
-      "Sid": "AssumeExecutionRole",
+      "Sid": "ReadVersion",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameter",
+      "Resource": "arn:aws:ssm:*:${ACCOUNT_ID}:parameter/cdk-bootstrap/toolkitv2/version"
+    },
+    {
+      "Sid": "AssumeRole",
       "Effect": "Allow",
       "Action": "sts:AssumeRole",
-      "Resource": "${EXECUTION_ROLE_ARN}"
+      "Resource": [
+        "arn:aws:iam::${ACCOUNT_ID}:role/cdk-toolkitv2-deploy-role-${ACCOUNT_ID}-*",
+        "arn:aws:iam::${ACCOUNT_ID}:role/cdk-toolkitv2-file-publishing-role-${ACCOUNT_ID}-*",
+        "arn:aws:iam::${ACCOUNT_ID}:role/cdk-toolkitv2-image-publishing-role-${ACCOUNT_ID}-*",
+        "arn:aws:iam::${ACCOUNT_ID}:role/cdk-toolkitv2-lookup-role-${ACCOUNT_ID}-*"
+      ]
+    },
+    {
+      "Sid": "PassRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::${ACCOUNT_ID}:role/\${aws:PrincipalTag/AppName}-infra-execution-role",
+      "Condition": {
+        "StringEquals": { "iam:PassedToService": "cloudformation.amazonaws.com" }
+      }
+    },
+    {
+      "Sid": "InfraS3Data",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": [
+        "arn:aws:s3:::\${aws:PrincipalTag/AppName}-*",
+        "arn:aws:s3:::\${aws:PrincipalTag/AppName}-*/*"
+      ]
+    },
+    {
+      "Sid": "InfraSsm",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:PutParameter", "ssm:DeleteParameter",
+        "ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath",
+        "ssm:GetParameterHistory",
+        "ssm:AddTagsToResource", "ssm:RemoveTagsFromResource", "ssm:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:ssm:*:${ACCOUNT_ID}:parameter/config/\${aws:PrincipalTag/AppName}*",
+        "arn:aws:ssm:*:${ACCOUNT_ID}:parameter/\${aws:PrincipalTag/AppName}*",
+        "arn:aws:ssm:*:${ACCOUNT_ID}:parameter/cdk/exports/\${aws:PrincipalTag/AppName}*"
+      ]
     }
   ]
 }
 EOF
 
+# CloudFormation assumes this role as the stacks' service role (hop 2 of the chain).
+# Deliberately trusted by CloudFormation only, matching edap-iam's pattern exactly -
+# the human never assumes this role directly, even for manual operations. The infra
+# role carries its own S3/SSM permissions above for that (a documented deviation from
+# edap-iam, which has no equivalent manual-CLI need)
 cat > "${WORKDIR}/execution-role-trust.json" <<EOF
 {
   "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": { "AWS": "${INFRA_ROLE_ARN}" },
-    "Action": "sts:AssumeRole"
-  }]
+  "Statement": [
+    {
+      "Sid": "CloudFormationServiceRole",
+      "Effect": "Allow",
+      "Principal": { "Service": "cloudformation.amazonaws.com" },
+      "Action": "sts:AssumeRole"
+    }
+  ]
 }
 EOF
 
+# No iam:*AccessKey actions: access keys are minted by hand as admin and stored in
+# Parameter Store, deliberately outside IaC
 cat > "${WORKDIR}/execution-role-permissions.json" <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "ManageDataBucketsAllEnvs",
+      "Sid": "CdkExecution",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameters",
+      "Resource": "arn:aws:ssm:*:${ACCOUNT_ID}:parameter/cdk-bootstrap/*"
+    },
+    {
+      "Sid": "InfraS3Bucket",
       "Effect": "Allow",
       "Action": [
-        "s3:CreateBucket", "s3:DeleteBucket", "s3:GetBucketLocation",
-        "s3:GetBucketVersioning", "s3:PutBucketVersioning",
+        "s3:CreateBucket", "s3:DeleteBucket", "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:*BucketVersioning",
         "s3:GetEncryptionConfiguration", "s3:PutEncryptionConfiguration",
         "s3:GetBucketPublicAccessBlock", "s3:PutBucketPublicAccessBlock",
         "s3:GetLifecycleConfiguration", "s3:PutLifecycleConfiguration",
         "s3:GetBucketTagging", "s3:PutBucketTagging",
         "s3:GetBucketPolicy", "s3:PutBucketPolicy", "s3:DeleteBucketPolicy",
-        "s3:GetBucketAcl", "s3:PutBucketAcl",
-        "s3:GetBucketCORS", "s3:PutBucketCORS",
-        "s3:GetBucketLogging", "s3:PutBucketLogging",
-        "s3:GetBucketRequestPayment", "s3:PutBucketRequestPayment",
-        "s3:GetAccelerateConfiguration", "s3:PutAccelerateConfiguration",
-        "s3:GetBucketWebsite", "s3:PutBucketWebsite",
-        "s3:GetReplicationConfiguration", "s3:PutReplicationConfiguration",
-        "s3:GetBucketObjectLockConfiguration", "s3:PutBucketObjectLockConfiguration",
+        "s3:GetBucketPolicyStatus",
         "s3:GetBucketOwnershipControls", "s3:PutBucketOwnershipControls",
-        "s3:GetBucketNotification", "s3:PutBucketNotification",
-        "s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"
+        "s3:GetBucketCORS", "s3:PutBucketCORS",
+        "s3:GetBucketWebsite", "s3:PutBucketWebsite", "s3:DeleteBucketWebsite"
+      ],
+      "Resource": "arn:aws:s3:::\${aws:PrincipalTag/AppName}-*"
+    },
+    {
+      "Sid": "InfraS3Object",
+      "Effect": "Allow",
+      "Action": "s3:*Object",
+      "Resource": "arn:aws:s3:::\${aws:PrincipalTag/AppName}-*/*"
+    },
+    {
+      "Sid": "InfraSsm",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:PutParameter", "ssm:DeleteParameter",
+        "ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath",
+        "ssm:GetParameterHistory",
+        "ssm:AddTagsToResource", "ssm:RemoveTagsFromResource", "ssm:ListTagsForResource"
       ],
       "Resource": [
-        "arn:aws:s3:::niffler-dev-data-${ACCOUNT_ID}",
-        "arn:aws:s3:::niffler-dev-data-${ACCOUNT_ID}/*",
-        "arn:aws:s3:::niffler-demo-data-${ACCOUNT_ID}",
-        "arn:aws:s3:::niffler-demo-data-${ACCOUNT_ID}/*",
-        "arn:aws:s3:::niffler-prod-data-${ACCOUNT_ID}",
-        "arn:aws:s3:::niffler-prod-data-${ACCOUNT_ID}/*"
+        "arn:aws:ssm:*:${ACCOUNT_ID}:parameter/config/\${aws:PrincipalTag/AppName}*",
+        "arn:aws:ssm:*:${ACCOUNT_ID}:parameter/\${aws:PrincipalTag/AppName}*",
+        "arn:aws:ssm:*:${ACCOUNT_ID}:parameter/cdk/exports/\${aws:PrincipalTag/AppName}*"
       ]
     },
     {
-      "Sid": "ManageStreamlitAppIdentities",
+      "Sid": "InfraIamUsers",
       "Effect": "Allow",
       "Action": [
-        "iam:CreateUser", "iam:DeleteUser", "iam:GetUser", "iam:TagUser",
+        "iam:CreateUser", "iam:DeleteUser", "iam:GetUser", "iam:UpdateUser",
+        "iam:TagUser", "iam:UntagUser", "iam:ListUserTags",
         "iam:PutUserPolicy", "iam:DeleteUserPolicy", "iam:GetUserPolicy",
-        "iam:CreateAccessKey", "iam:DeleteAccessKey", "iam:ListAccessKeys"
+        "iam:ListUserPolicies", "iam:ListAttachedUserPolicies",
+        "iam:ListGroupsForUser", "iam:GetLoginProfile"
       ],
-      "Resource": "arn:aws:iam::${ACCOUNT_ID}:user/niffler-streamlit-app-*"
+      "Resource": "arn:aws:iam::${ACCOUNT_ID}:user/\${aws:PrincipalTag/AppName}-*"
     }
   ]
 }
 EOF
 
+# IAM is eventually consistent: a role named as a principal in another role's trust
+# policy is rejected as "Invalid principal" for a few seconds after it is created
+retry_on_invalid_principal() {
+  local attempt
+  for attempt in 1 2 3 4 5 6; do
+    if "$@" 2>"${WORKDIR}/iam-error"; then
+      return 0
+    fi
+    if ! grep -q "Invalid principal" "${WORKDIR}/iam-error"; then
+      cat "${WORKDIR}/iam-error" >&2
+      return 1
+    fi
+    echo "    Principal not yet propagated, retrying (${attempt}/6)"
+    sleep 5
+  done
+  echo "ERROR: principal never propagated." >&2
+  return 1
+}
+
+create_or_update_role() {
+  local role_name="$1" trust_file="$2" description="$3"
+  if aws iam get-role --role-name "$role_name" --profile "$SSO_PROFILE" >/dev/null 2>&1; then
+    echo "    Role exists, updating trust policy"
+    retry_on_invalid_principal aws iam update-assume-role-policy --role-name "$role_name" \
+      --policy-document "file://${trust_file}" --profile "$SSO_PROFILE"
+  else
+    echo "    Creating role"
+    retry_on_invalid_principal aws iam create-role --role-name "$role_name" \
+      --assume-role-policy-document "file://${trust_file}" \
+      --description "$description" \
+      --profile "$SSO_PROFILE" >/dev/null
+  fi
+  # Tag before attaching permissions: every statement is scoped by
+  # \${aws:PrincipalTag/AppName}, so an untagged role is denied everything
+  aws iam tag-role --role-name "$role_name" \
+    --tags "Key=AppName,Value=${APP_NAME}" --profile "$SSO_PROFILE"
+}
+
 echo "==> Creating ${INFRA_ROLE_NAME}"
-if aws iam get-role --role-name "$INFRA_ROLE_NAME" --profile "$SSO_PROFILE" >/dev/null 2>&1; then
-  echo "    Role already exists, updating trust + inline policy"
-  aws iam update-assume-role-policy --role-name "$INFRA_ROLE_NAME" \
-    --policy-document "file://${WORKDIR}/infra-role-trust.json" --profile "$SSO_PROFILE"
-else
-  aws iam create-role --role-name "$INFRA_ROLE_NAME" \
-    --assume-role-policy-document "file://${WORKDIR}/infra-role-trust.json" \
-    --description "Assumable by the human SSO session; can only drive Terraform state + assume ${EXECUTION_ROLE_NAME}" \
-    --profile "$SSO_PROFILE" >/dev/null
-fi
+create_or_update_role "$INFRA_ROLE_NAME" "${WORKDIR}/infra-role-trust.json" \
+  "Assumable by the human SSO session; drives CloudFormation and manual S3/SSM operations"
 aws iam put-role-policy --role-name "$INFRA_ROLE_NAME" \
   --policy-name "niffler-infra-role-permissions" \
   --policy-document "file://${WORKDIR}/infra-role-permissions.json" \
   --profile "$SSO_PROFILE"
 
 echo "==> Creating ${EXECUTION_ROLE_NAME}"
-if aws iam get-role --role-name "$EXECUTION_ROLE_NAME" --profile "$SSO_PROFILE" >/dev/null 2>&1; then
-  echo "    Role already exists, updating trust + inline policy"
-  aws iam update-assume-role-policy --role-name "$EXECUTION_ROLE_NAME" \
-    --policy-document "file://${WORKDIR}/execution-role-trust.json" --profile "$SSO_PROFILE"
-else
-  aws iam create-role --role-name "$EXECUTION_ROLE_NAME" \
-    --assume-role-policy-document "file://${WORKDIR}/execution-role-trust.json" \
-    --description "Assumable only by ${INFRA_ROLE_NAME}; the only identity that can manage niffler's actual AWS resources" \
-    --profile "$SSO_PROFILE" >/dev/null
-fi
+create_or_update_role "$EXECUTION_ROLE_NAME" "${WORKDIR}/execution-role-trust.json" \
+  "Assumed only by CloudFormation as the stacks' service role - never by a human directly"
 aws iam put-role-policy --role-name "$EXECUTION_ROLE_NAME" \
   --policy-name "niffler-infra-execution-role-permissions" \
   --policy-document "file://${WORKDIR}/execution-role-permissions.json" \
@@ -211,7 +298,9 @@ aws iam put-role-policy --role-name "$EXECUTION_ROLE_NAME" \
 
 echo "==> Bootstrap complete."
 echo ""
-echo "Next: add the chained profiles from infra/bootstrap/README.md to ~/.aws/config,"
-echo "then verify the chain with:"
+echo "Verify the AppName tag (load-bearing - every policy is scoped by it):"
+echo "  aws iam list-role-tags --role-name ${INFRA_ROLE_NAME} --profile ${SSO_PROFILE}"
+echo "  aws iam list-role-tags --role-name ${EXECUTION_ROLE_NAME} --profile ${SSO_PROFILE}"
+echo ""
+echo "Then verify it:"
 echo "  aws sts get-caller-identity --profile niffler-infra"
-echo "  aws sts get-caller-identity --profile niffler-infra-exec"

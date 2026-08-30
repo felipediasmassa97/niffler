@@ -212,9 +212,6 @@ src/app/data/**
 # Streamlit secrets (AWS credentials)
 **/.streamlit/secrets.toml
 
-# Terraform local artifacts (.terraform.lock.hcl IS committed, per env directory)
-.terraform/
-*.tfplan
-tfplan
-crash.log
-crash.*.log
+# AWS CDK
+cdk.out/
+node_modules/

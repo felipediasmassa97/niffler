@@ -22,17 +22,23 @@
 ## Cloud
 
 - CL-01: Migrate to cloud
-  - [x] AWS with Terraform for IaC (`infra/`, three envs: dev/demo/prod)
+  - [x] AWS with CDK (Python) for IaC (`infra/`, three env stacks: dev/demo/prod)
   - [ ] Check appropriate database (pricing) - deferred, no database yet
-  - [x] Set up profiles (`fmassa` SSO -> `niffler-infra` -> `niffler-infra-exec` chain)
+  - [x] Set up profiles (`fmassa` SSO -> `niffler-infra`; `niffler-infra-execution-role` is
+        assumed only by CloudFormation, never directly by a human)
   - [ ] Check billing periodically
   - [x] App in Streamlit Cloud not AWS (infra only hosts data + IAM, no compute)
   - [x] Set up AWS auth in Streamlit Cloud secrets (`dev` wired; `demo`/`prod` deferred until
-    those environments actually get a Streamlit Cloud deployment)
+        those environments actually get a Streamlit Cloud deployment)
   - [x] S3 in infra stack (database still deferred, no lambda)
-  - See `docs/implementation/001__infra/PRD.md` for the full design and what's still open.
+  - See `docs/implementation/001__infra/PRD.md` for the original design and
+    `docs/implementation/002__cdk_migration/PRD.md` for the Terraform -> CDK migration.
 
 - CL-02: Set up CICD
+  - Shape is already visible in the reference repos this migration drew from: `cdk diff` then
+    `cdk deploy` with `ENVIRONMENT` set per job, and a GitHub-OIDC trust statement added to the
+    `niffler-infra` role's trust policy (see `edap-iam`'s `role/main.tf` federated-principal
+    pattern, omitted from `infra/bootstrap/bootstrap.sh` for now since there is no CI yet)
 
 - CL-03: Add auth to cloud
   - Allowed emails as AWS parameter

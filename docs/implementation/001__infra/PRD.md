@@ -1,5 +1,13 @@
 # Feature: AWS Infra for niffler (S3 data buckets + least-privilege IAM)
 
+> **IaC tool superseded.** The architecture below (buckets, IAM role chain, the two-hop identity
+> model) is current and accurate. The IaC *tool* is not - as of
+> `docs/implementation/002__cdk_migration/PRD.md`, all of it is managed by AWS CDK (Python), not
+> Terraform. Every mention below of Terraform, `infra/modules`, `infra/envs`, or the tfstate
+> buckets is historical - this document is the record of what originally shipped, not rewritten
+> after the migration. See `002__cdk_migration/PRD.md` for the current tooling and `infra/README.md`
+> for day-to-day commands.
+
 ## Overview
 
 niffler currently reads a single Mobills Excel export per run from `src/app/data/YYYYMMDD.xlsx`

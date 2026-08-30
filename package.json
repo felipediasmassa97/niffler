@@ -1,0 +1,7 @@
+{
+  "name": "niffler",
+  "private": true,
+  "devDependencies": {
+    "aws-cdk": "2.1138.0"
+  }
+}

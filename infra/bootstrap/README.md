@@ -1,69 +1,134 @@
 # Bootstrap
 
-One-time setup that creates everything Terraform itself depends on, run manually with the raw
-admin SSO session. It is **not** a Terraform config, and it is **not** part of `infra/`'s
-Terraform state - see `docs/implementation/001__infra/PRD.md` ("Bootstrap" section) for why: the
-project that manages the Terraform state backend can't itself be managed by that same state.
+Account-level setup that has to exist before AWS CDK can deploy anything: the two-hop IAM role
+chain (`niffler-infra` -> `niffler-infra-execution-role`), and the `CDKToolkit` stack CDK itself
+depends on. Both are created manually with the raw admin SSO session, and neither is managed by
+the `InfraStack` app - see `docs/implementation/002__cdk_migration/PRD.md` for why bootstrap has
+to live outside the thing it bootstraps.
 
 ## What it creates
 
-Running `bootstrap.sh` once creates:
+### `bootstrap.sh` - the two chain roles
 
-1. Three Terraform state buckets, one per environment: `niffler-{dev,demo,prod}-tfstate-309917471802`
-   (versioned, SSE-S3 encrypted, fully public-access-blocked). No DynamoDB lock table - each
-   environment's `backend.tf` uses Terraform's native S3-backend locking instead.
-2. `niffler-infra-role` - assumable only by the `fmassa` SSO session. Scoped to read/write the
-   three state buckets and `sts:AssumeRole` into `niffler-infra-execution-role`. Nothing else.
-3. `niffler-infra-execution-role` - assumable only by `niffler-infra-role` (not by the SSO
-   session directly). The only identity that can create/manage niffler's actual resources: the
-   three data buckets and the `niffler-streamlit-app-*` IAM users.
+1. `niffler-infra` - assumable only by the `fmassa` SSO session (account-root principal, gated by
+   an `ArnLike` condition on the `AdministratorAccess` permission set - this survives the
+   permission set being recreated, unlike a hardcoded role ARN). Drives CloudFormation, and also
+   carries its own S3 object CRUD and Parameter Store permissions for the manual CLI path
+   (`aws s3 cp` uploads, the access-key runbook) - see "A deliberate deviation from edap-iam"
+   below.
+2. `niffler-infra-execution-role` - assumed **only** by the CloudFormation service principal, as
+   every stack's service role. The only identity that can manage niffler's actual resources: the
+   data buckets and the `niffler-<env>-app` IAM users. Never assumable by a human, matching
+   `tfmcdigital/edap-iam`'s pattern exactly.
 
-Neither role's policy contains a wildcard `Action` or `Resource`.
+Both roles are tagged `AppName = niffler` - **load-bearing**, since every statement in both
+policies is scoped by `${aws:PrincipalTag/AppName}` rather than a hand-enumerated per-environment
+ARN list. An untagged role is denied everything. Re-verify after any change:
+
+```bash
+aws iam list-role-tags --role-name niffler-infra --profile fmassa
+aws iam list-role-tags --role-name niffler-infra-execution-role --profile fmassa
+```
+
+Neither policy contains an unbounded wildcard `Action` or `Resource` - the two narrow, documented
+exceptions (`sts:GetCallerIdentity`, and the suffix-anchored `s3:*Object`/`s3:*BucketVersioning`)
+are covered in the PRD's "IAM policies for the two chain roles" section.
+
+### A deliberate deviation from edap-iam
+
+In `edap-iam`, an app's execution role is trusted only by CloudFormation - the human path doesn't
+exist, because everything runs through CI. niffler has no CI yet (`CL-02`), but does have a
+recurring manual workflow: the weekly snapshot upload and the access-key-in-Parameter-Store
+runbook. Rather than let the human assume the execution role directly (which would have meant
+trusting `niffler-infra` as a principal on `niffler-infra-execution-role` - the model this project
+used briefly during migration, since abandoned), `niffler-infra` itself carries two extra
+statements: `InfraS3Data` (`s3:ListBucket`/`GetObject`/`PutObject`/`DeleteObject` on
+`niffler-*` buckets) and `InfraSsm` (parameter read/write/tag under `/config/niffler*`). This
+keeps the execution role's trust policy identical to `edap-iam`'s pattern - CloudFormation only,
+no human principal - while still giving the human everything the manual workflow needs, from the
+one role they're allowed to assume in the first place.
+
+### `cdk bootstrap` - the CDKToolkit stack
+
+CDK's own deploy-time infrastructure (a staging S3 bucket, an ECR repo, and four IAM roles) is
+**not** created by `bootstrap.sh` - it's a separate, one-time `cdk bootstrap` call. It uses a
+custom `toolkitv2` qualifier so its resources are namespaced independently of any other CDK usage
+in this account, matching the pattern from `tfmcdigital/edap-iam`.
+
+The stock bootstrap template is not enough on its own: its `DeploymentActionRole` can only
+`iam:PassRole` the bootstrap's own `CloudFormationExecutionRole`, but niffler's stacks deploy with
+`niffler-infra-execution-role` as their service role (that's what preserves the two-hop chain).
+Bootstrap with an extra `iam:PassRole` statement scoped to `*-infra-execution-role`:
+
+```bash
+cdk bootstrap --show-template --no-notices > /tmp/cdk-bootstrap-template.yaml
+```
+
+In the generated file, find `DeploymentActionRole`'s policy statements and add, immediately after
+the existing `iam:PassRole` statement for `CloudFormationExecutionRole.Arn`:
+
+```yaml
+- Sid: PassAppExecutionRole
+  Action: iam:PassRole
+  Resource:
+    Fn::Sub: arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*-infra-execution-role
+  Effect: Allow
+```
+
+Then bootstrap with it:
+
+```bash
+cdk bootstrap aws://309917471802/us-east-2 --profile fmassa --qualifier toolkitv2 \
+  --template /tmp/cdk-bootstrap-template.yaml \
+  --cloudformation-execution-policies arn:aws:iam::aws:policy/AWSDenyAll \
+  --termination-protection
+```
+
+`AWSDenyAll` is deliberate: the bootstrap's own `CloudFormationExecutionRole` is never used to
+deploy niffler's stacks (the synthesizer overrides it with `niffler-infra-execution-role`), so it
+carries no real permissions. `--termination-protection` guards the `CDKToolkit` stack itself
+against accidental deletion.
+
+This template is generated fresh each time, not committed to the repo - `cdk bootstrap`'s default
+template changes across CDK versions, and freezing a copy here would drift from those updates.
+Re-derive it with `--show-template` and reapply the one-statement patch above whenever the
+`CDKToolkit` stack needs updating (a CDK CLI major upgrade, most likely).
 
 ## Prerequisites
 
-- Terraform `>= 1.10.0` installed (`terraform version`).
-- `aws sso login --profile fmassa` completed successfully (`aws sts get-caller-identity --profile
-  fmassa` returns account `309917471802`).
+- Node (see `.nvmrc`) and `npm install` run at the repo root, so `npx cdk` resolves.
+- `aws sso login --profile fmassa` completed (`aws sts get-caller-identity --profile fmassa`
+  returns account `309917471802`).
 
-## Running it
+## Running `bootstrap.sh`
 
 ```bash
 bash infra/bootstrap/bootstrap.sh
 ```
 
-The script is safe to re-run: bucket creation and IAM role/policy calls are guarded with
-existence checks or are naturally idempotent (`put-bucket-versioning`,
-`put-role-policy`, etc. overwrite rather than error). It is not, however, guaranteed
-*transactional* - if it fails partway (e.g. a transient AWS API error), just re-run it; already-
-created resources are detected and left alone or have their policies refreshed to match this
-script's current contents.
+Safe to re-run: every step creates-or-updates in place. IAM's eventual consistency means a
+freshly created role can briefly be rejected as an "Invalid principal" when referenced by another
+role's trust policy - the script retries automatically for a few seconds before giving up.
 
-## After running: add the chained CLI profiles
+## After running: add the CLI profile
 
-The script only creates AWS-side resources. Add these two profiles to `~/.aws/config` yourself
+The script only creates AWS-side resources. Add this profile to `~/.aws/config` yourself
 (per-machine local config, not committed anywhere):
 
 ```ini
 [profile niffler-infra]
-role_arn       = arn:aws:iam::309917471802:role/niffler-infra-role
+role_arn       = arn:aws:iam::309917471802:role/niffler-infra
 source_profile = fmassa
 region         = us-east-2
-
-[profile niffler-infra-exec]
-role_arn       = arn:aws:iam::309917471802:role/niffler-infra-execution-role
-source_profile = niffler-infra
-region         = us-east-2
 ```
 
-Then verify the full two-hop chain:
+Then verify it:
 
 ```bash
-aws sts get-caller-identity --profile niffler-infra        # shows niffler-infra-role
-aws sts get-caller-identity --profile niffler-infra-exec   # shows niffler-infra-execution-role
+aws sts get-caller-identity --profile niffler-infra   # shows niffler-infra
 ```
 
-`infra/envs/*/backend.tf` and `providers.tf` use these profiles - `niffler-infra` for Terraform
-state access (hop 1), and `niffler-infra` -> `niffler-infra-execution-role` inside the AWS
-provider's `assume_role` block for all actual resource operations (hop 2). The same
-`niffler-infra-exec` profile is what you'd use later for a manual `aws s3 cp` snapshot upload.
+There is no third profile for `niffler-infra-execution-role` - it is never assumed by a human.
+`niffler-infra` is what you use for everything: `cdk diff`/`cdk deploy` (CloudFormation itself
+assumes the execution role as the service role, per the synthesizer config in `infra/app.py`), a
+manual `aws s3 cp` snapshot upload, or an `aws ssm put-parameter` call.
