@@ -2,8 +2,9 @@
 
 # fixit deprecated file, remove after verifying no usage
 
-# If a category must be projected, its actual costs are projected to the full period proportionally to date
-# If a category must not be projected, its actual costs are taken as-is without projection
+# If a category must be projected, its actual costs are projected to the full period
+# proportionally to date. If a category must not be projected, its actual costs are
+# taken as-is without projection.
 CATEGORY_MUST_PROJECT = {
     "Car": True,  # because most transactions are distributed (gas)
     "Health": True,  # because most transactions are weekly (therapy)

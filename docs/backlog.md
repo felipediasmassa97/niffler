@@ -2,60 +2,64 @@
 
 ## General
 
-- GN-01: Turn fixits into to-dos
+- [ ] Turn fixits into to-dos
 
-- GN-02: Add view with both non-diluted and diluted (in same page, side-by-side)
+- [ ] Add view with both non-diluted and diluted (in same page, side-by-side)
+
+- [ ] Flag data quality issues in app (e.g. wrong category, missing tag, wrong trip)
 
 ## Data Pipeline
 
-- DP-01:
-  - Add async data project
+- [ ] Automated data project
   - Load latest report from S3 not repo
   - Create lambda function that reads Excel file in S3 and syncs state to database (upserts + delete data in database)
   - To start, no need to fetch reports from Mobills automatically
+  - Check appropriate database (pricing) - deferred, no database yet
+  - Lambda function upserting from S3 bucket to database
+  - Must be idempotent
+  - Must keep, add, update or delete items from the same time window (e.g. if two reports cover the same day, the latest wins on all additions and deletions)
 
-- DP-02:
+- [ ] Automate Mobills reports
   - Fetch Mobills reports automatically weekly, dump to S3 raw report
-
-## Harness
 
 ## Cloud
 
-- CL-01: Migrate to cloud
-  - [x] AWS with CDK (Python) for IaC (`infra/`, three env stacks: dev/demo/prod)
-  - [ ] Check appropriate database (pricing) - deferred, no database yet
-  - [x] Set up profiles (`fmassa` SSO -> `niffler-infra`; `niffler-infra-execution-role` is
-        assumed only by CloudFormation, never directly by a human)
-  - [ ] Check billing periodically
-  - [x] App in Streamlit Cloud not AWS (infra only hosts data + IAM, no compute)
-  - [x] Set up AWS auth in Streamlit Cloud secrets (`dev` wired; `demo`/`prod` deferred until
-        those environments actually get a Streamlit Cloud deployment)
-  - [x] S3 in infra stack (database still deferred, no lambda)
-  - See `docs/implementation/001__infra/PRD.md` for the original design and
-    `docs/implementation/002__cdk_migration/PRD.md` for the Terraform -> CDK migration.
+- [x] Migrate to cloud
+  - AWS with CDK (Python) for IaC (`infra/`, three env stacks: dev/demo/prod)
+  - Set up profiles (`fmassa` SSO -> `niffler-infra`; `niffler-infra-execution-role` is assumed only by CloudFormation, never directly by a human)
+  - App in Streamlit Cloud not AWS (infra only hosts data + IAM, no compute)
+  - Set up AWS auth in Streamlit Cloud secrets (`dev` wired; `demo`/`prod` deferred until those environments actually get a Streamlit Cloud deployment)
+  - S3 in infra stack (database still deferred, no lambda)
 
-- CL-02: Set up CICD
-  - Shape is already visible in the reference repos this migration drew from: `cdk diff` then
-    `cdk deploy` with `ENVIRONMENT` set per job, and a GitHub-OIDC trust statement added to the
-    `niffler-infra` role's trust policy (see `edap-iam`'s `role/main.tf` federated-principal
-    pattern, omitted from `infra/bootstrap/bootstrap.sh` for now since there is no CI yet)
+- [x] Streamlit Cloud app
 
-- CL-03: Add auth to cloud
+- [ ] Set up CICD
+  - Shape is already visible in the reference repos this migration drew from: `cdk diff` then `cdk deploy` with `ENVIRONMENT` set per job, and a GitHub-OIDC trust statement added to the `niffler-infra` role's trust policy (see `edap-iam`'s `role/main.tf` federated-principal pattern, omitted from `infra/bootstrap/bootstrap.sh` for now since there is no CI yet)
+
+- [ ] Add auth to cloud
+  - Google Mail integration
   - Allowed emails as AWS parameter
 
-- CL-04: Narrow fmassa SSO permission set away from AdministratorAccess
+- [ ] Automate and centralize bootstrap
+  - Dedicated repo to manage creation of infra and execution role in all AWS projects
+  - This repository manages policies for infra and execution roles (similar to edap-iam)
+
+- [ ] Narrow fmassa SSO permission set away from AdministratorAccess
   - Needed to make the niffler-infra-role chain a real technical boundary rather than just a
     workflow convention (see "SSO role scope" in `docs/implementation/001__infra/PRD.md`)
 
+- [ ] Billing
+  - Check billing periodically
+
 ## Tests
 
-- TS-01: Create automated tests based on business rules
+- [ ] Create automated tests based on business rules
   - Freeze mock data locally
   - Have Claude set up consistency tests for each business rule
 
-- TS-02: Create playwright tests
+- [x] Create playwright tests
   - Goal: assert app renders without error
 
 ## User Experience
 
-- UX-01: Improve plotly tooltips
+- [ ] Improve plotly tooltips

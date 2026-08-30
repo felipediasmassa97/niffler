@@ -7,8 +7,8 @@ import streamlit as st
 # fixit add dilution assignment validation (based on rules in kpis.py)
 
 
-def validation():
-    """Validation page."""
+def validation() -> None:
+    """Render the validation page."""
     st.title("Validation")
     st.write("This is the Validation page.")
 

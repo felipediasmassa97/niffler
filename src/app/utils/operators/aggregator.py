@@ -1,14 +1,15 @@
 """Data aggregators."""
 
-import pandas as pd
+from typing import ClassVar
 
+import pandas as pd
 from utils.operators import Operator
 
 
 class Aggregator(Operator):
     """Data aggregator."""
 
-    def __init__(self, operator: Operator, columns: list[str]):
+    def __init__(self, operator: Operator, columns: list[str]) -> None:
         """Initialize the aggregator."""
         if columns is None:
             columns = []
@@ -17,6 +18,7 @@ class Aggregator(Operator):
 
     @property
     def data(self) -> pd.DataFrame:
+        """Data aggregated (summed `Value`) by `columns`."""
         return self._data
 
     def _aggregate_data(self, data: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
@@ -35,7 +37,10 @@ class Aggregator(Operator):
 class CombinedAggregator(Aggregator):
     """Combined aggregator."""
 
-    def __init__(self, operator: Operator, *aggregator_classes: list[Aggregator]):
+    def __init__(
+        self, operator: Operator, *aggregator_classes: list[Aggregator]
+    ) -> None:
+        """Initialize the combined aggregator, merging each class's columns."""
         all_columns = []
 
         # Collect all columns from the aggregator classes
@@ -57,62 +62,70 @@ class CombinedAggregator(Aggregator):
 class MonthlyAggregator(Aggregator):
     """Monthly aggregator."""
 
-    columns = ["Month"]
+    columns: ClassVar[list[str]] = ["Month"]
 
-    def __init__(self, operator: Operator):
+    def __init__(self, operator: Operator) -> None:
+        """Initialize the monthly aggregator."""
         super().__init__(operator, self.columns)
 
 
 class YearlyAggregator(Aggregator):
     """Yearly aggregator."""
 
-    columns = ["Year"]
+    columns: ClassVar[list[str]] = ["Year"]
 
-    def __init__(self, operator: Operator):
+    def __init__(self, operator: Operator) -> None:
+        """Initialize the yearly aggregator."""
         super().__init__(operator, self.columns)
 
 
 class CategoryAggregator(Aggregator):
     """Category aggregator."""
 
-    columns = ["Category"]
+    columns: ClassVar[list[str]] = ["Category"]
 
-    def __init__(self, operator: Operator):
+    def __init__(self, operator: Operator) -> None:
+        """Initialize the category aggregator."""
         super().__init__(operator, self.columns)
 
 
 class TierAggregator(Aggregator):
     """Tier aggregator."""
 
-    columns = ["Tier"]
+    columns: ClassVar[list[str]] = ["Tier"]
 
-    def __init__(self, operator: Operator):
+    def __init__(self, operator: Operator) -> None:
+        """Initialize the tier aggregator."""
         super().__init__(operator, self.columns)
 
 
 class MonthlyCategoryAggregator(CombinedAggregator):
     """Monthly-category aggregator."""
 
-    def __init__(self, operator: Operator):
+    def __init__(self, operator: Operator) -> None:
+        """Initialize the monthly-category aggregator."""
         super().__init__(operator, MonthlyAggregator, CategoryAggregator)
 
 
 class MonthlyTierAggregator(CombinedAggregator):
     """Monthly-tier aggregator."""
 
-    def __init__(self, operator: Operator):
+    def __init__(self, operator: Operator) -> None:
+        """Initialize the monthly-tier aggregator."""
         super().__init__(operator, MonthlyAggregator, TierAggregator)
 
 
 class YearlyCategoryAggregator(CombinedAggregator):
     """Yearly-category aggregator."""
 
-    def __init__(self, operator: Operator):
+    def __init__(self, operator: Operator) -> None:
+        """Initialize the yearly-category aggregator."""
         super().__init__(operator, YearlyAggregator, CategoryAggregator)
 
 
 class YearlyTierAggregator(CombinedAggregator):
     """Yearly-tier aggregator."""
 
-    def __init__(self, operator: Operator):
+    def __init__(self, operator: Operator) -> None:
+        """Initialize the yearly-tier aggregator."""
         super().__init__(operator, YearlyAggregator, TierAggregator)

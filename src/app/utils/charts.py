@@ -2,11 +2,13 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import plotly.express as px
 import plotly.graph_objects as go
 
-from utils.operators import Operator
+if TYPE_CHECKING:
+    from utils.operators import Operator
 
 
 @dataclass
@@ -38,6 +40,7 @@ class SimpleBarChart(BarChart):
 
     @property
     def chart(self) -> go.Figure:
+        """Chart figure."""
         fig = px.bar(
             self.operator.data,
             x=self.column_x,
@@ -57,6 +60,7 @@ class GroupedBarChart(BarChart):
 
     @property
     def chart(self) -> go.Figure:
+        """Chart figure."""
         fig = px.bar(
             self.operator.data,
             x=self.column_x,
