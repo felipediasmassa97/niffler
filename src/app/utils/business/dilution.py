@@ -2,14 +2,22 @@
 
 import pandas as pd
 from unidecode import unidecode
-
 from utils.operators import Operator
+
+# Value-based dilution overrides - see docs/business_rules/dilution.md
+REFUND_DILUTION_THRESHOLD = 500
+CAR_DILUTION_THRESHOLD = 300
+DONATION_DILUTION_THRESHOLD = 200
+HOME_DILUTION_THRESHOLD = 250
+SUBSCRIPTIONS_DILUTION_THRESHOLD = 60
+WORK_DILUTION_THRESHOLD = 300
 
 
 class DilutionAssigner(Operator):
     """Data expense dilution assigner.
 
-    Transactions to be diluted depend on business rules associated to their category and value.
+    Transactions to be diluted depend on business rules associated to their
+    category and value.
     """
 
     def __init__(self, operator: Operator) -> None:
@@ -19,6 +27,7 @@ class DilutionAssigner(Operator):
 
     @property
     def data(self) -> pd.DataFrame:
+        """Data with the `Dilution` flag assigned."""
         return self._data
 
     def _assign_dilution(self, row: pd.Series) -> bool:
@@ -31,9 +40,8 @@ class DilutionAssigner(Operator):
 
     def _assign_dilution_income(self, category: str, value: float) -> bool:
         """Assign dilution for income entries."""
-
         # Specific cases
-        if category == "refund" and value >= 500:
+        if category == "refund" and value >= REFUND_DILUTION_THRESHOLD:
             return True
 
         # General per-category assignment
@@ -42,21 +50,22 @@ class DilutionAssigner(Operator):
             "refund": False,
             "rewards": True,
             "salary": True,
+            # Synthetic trip balance from TripBalanceCalculator - see travel.md
+            "travel": True,
         }[category]
 
     def _assign_dilution_expense(self, category: str, value: float) -> bool:
         """Assign dilution for expense entries."""
-
         # Specific cases
-        if category == "car" and value >= 300:
+        if category == "car" and value >= CAR_DILUTION_THRESHOLD:
             return True
-        if category == "donation" and value >= 200:
+        if category == "donation" and value >= DONATION_DILUTION_THRESHOLD:
             return True
-        if category == "home" and value >= 250:
+        if category == "home" and value >= HOME_DILUTION_THRESHOLD:
             return True
-        if category == "subscriptions" and value >= 60:
+        if category == "subscriptions" and value >= SUBSCRIPTIONS_DILUTION_THRESHOLD:
             return True
-        if category == "work" and value >= 300:
+        if category == "work" and value >= WORK_DILUTION_THRESHOLD:
             return True
 
         # General per-category assignment
@@ -100,7 +109,6 @@ class Diluter(DilutionAssigner):
 
     def __init__(self, operator: Operator) -> None:
         """Initialize the tier assigner."""
-
         super().__init__(operator)
 
         self._data = self._dilute_costs(self._data)

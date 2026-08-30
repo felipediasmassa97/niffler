@@ -21,11 +21,16 @@ matched falls back to a per-category default.
 
 **Income** — `Value > 0`:
 
-| Category                   | Diluted?       |
-| -------------------------- | -------------- |
-| `refund` >= R$500          | Yes (override) |
-| `rewards`, `salary`        | Yes            |
-| `gift`, `refund` (< R$500) | No             |
+| Category                      | Diluted?       |
+| ----------------------------- | -------------- |
+| `refund` >= R$500             | Yes (override) |
+| `rewards`, `salary`, `travel` | Yes            |
+| `gift`, `refund` (< R$500)    | No             |
+
+`travel` shows up on the income side only via `TripBalanceCalculator`'s synthetic
+`"Saldo Viagem {year}"` balance transaction (see [travel.md](travel.md)) when a trip finishes
+under budget (`Value > 0`); it's diluted to match the expense-side `travel` treatment below, so
+the yearly trip result smooths the same way regardless of surplus or overrun.
 
 **Expenses** — `Value <= 0` (compared on the absolute value):
 
