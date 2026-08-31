@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 import streamlit as st
+from utils.business import standardize_string
 from utils.business.budget import CATEGORY_BUDGETS
 from utils.business.travel import TripBalanceCalculator
 from utils.globals import Account
@@ -183,10 +184,17 @@ class KpiTrendsCalculator:
 
     @property
     def expenses_inflation_perc(self) -> float:
-        """Expenses inflation percentage."""
-        return (self.expenses_increase_perc - self.income_increase_perc) / (
-            self.income_increase_perc + 1e-5
-        )
+        """How much faster expenses grew than income, in percentage points.
+
+        A plain difference, not a ratio of the two increase percentages - that ratio
+        form is unstable whenever income growth is near zero (a common, unremarkable
+        state, not a corner case), since the epsilon only avoids a literal division by
+        zero without preventing the result from blowing up or flipping sign right
+        around that point. The difference is bounded and reads the same way regardless
+        of scale: "expenses grew 4 percentage points faster than income" rather than
+        "expenses grew 340% faster than income" when income barely moved. See kpis.md.
+        """
+        return self.expenses_increase_perc - self.income_increase_perc
 
 
 class KpiCategoryCalculator(KpiCalculator):
@@ -200,8 +208,15 @@ class KpiCategoryCalculator(KpiCalculator):
         return [item[0] for item in items_sorted]
 
     def get_category_data(self, data: pd.DataFrame, category: str) -> pd.DataFrame:
-        """Get category data."""
-        return data[data["Category"] == category]
+        """Get category data, matching case/accent-insensitively like dilution/tiers.
+
+        Without this, a category typed with unexpected casing/accents in Mobills would
+        still dilute/tier correctly (both standardize) but silently vanish from every
+        per-category KPI bucket here (exact match, no bucket to fall into) - see
+        docs/business_rules/categories.md.
+        """
+        target = standardize_string(category)
+        return data[data["Category"].apply(standardize_string) == target]
 
     @property
     def income_categories_sorted(self) -> list[str]:
@@ -430,7 +445,16 @@ class CardKpi:
         if self.target is not None and self.higher_is_better is None:
             msg = "higher_is_better must be passed"
             raise ValueError(msg)
-        if (self.value >= self.target) == self.higher_is_better:
+        # Hitting the target exactly always counts as met, in either direction -
+        # previously always compared with `>=` then XOR'd against higher_is_better,
+        # which made value == target "not met" whenever higher_is_better was False
+        # (e.g. landing exactly on a spending cap read as a failure)
+        is_met = (
+            self.value >= self.target
+            if self.higher_is_better
+            else self.value <= self.target
+        )
+        if is_met:
             return "kpi-card-met"
         return "kpi-card-not-met"
 

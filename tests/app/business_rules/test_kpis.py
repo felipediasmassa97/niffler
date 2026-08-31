@@ -98,7 +98,11 @@ class TestKpiTrendsCalculator:
         assert trends.income_increase_perc == pytest.approx(0.2, rel=1e-3)
 
     def test_expenses_inflation_percentage(self, make_operator: Any) -> None:
-        """Inflation compares how much faster expenses grew than income."""
+        """Inflation is a plain percentage-point difference, not a ratio.
+
+        Deliberately not (expenses_increase - income_increase) / income_increase: that
+        ratio form is unstable whenever income growth is near zero - see kpis.md.
+        """
         current = KpiCalculator(
             make_operator(
                 [{"Value": 1100, "Tier": "Fixed"}, {"Value": -1200, "Tier": "Fixed"}]
@@ -111,8 +115,28 @@ class TestKpiTrendsCalculator:
         )
         trends = KpiTrendsCalculator(current, previous)
 
-        # income +10%, expenses +20% -> inflation = (0.2 - 0.1) / 0.1 = 1.0
-        assert trends.expenses_inflation_perc == pytest.approx(1.0, rel=1e-3)
+        # income +10%, expenses +20% -> inflation = 0.2 - 0.1 = 0.1 (10 points)
+        assert trends.expenses_inflation_perc == pytest.approx(0.1, rel=1e-3)
+
+    def test_expenses_inflation_percentage_is_stable_near_zero_income_growth(
+        self, make_operator: Any
+    ) -> None:
+        """The old ratio formula blew up here; the difference formula stays bounded."""
+        current = KpiCalculator(
+            make_operator(
+                [{"Value": 1000.01, "Tier": "Fixed"}, {"Value": -1200, "Tier": "Fixed"}]
+            )
+        )
+        previous = KpiCalculator(
+            make_operator(
+                [{"Value": 1000, "Tier": "Fixed"}, {"Value": -1000, "Tier": "Fixed"}]
+            )
+        )
+        trends = KpiTrendsCalculator(current, previous)
+
+        # income growth ~0%, expenses +20% -> inflation ~= 0.2 (20 points), not a
+        # blown-up or sign-flipped ratio
+        assert trends.expenses_inflation_perc == pytest.approx(0.2, abs=1e-3)
 
 
 class TestKpiCategoryCalculator:
@@ -131,6 +155,21 @@ class TestKpiCategoryCalculator:
         assert set(by_category) == set(CATEGORY_BUDGETS)
         assert by_category["Restaurant"] == 150
         assert by_category["Car"] == 0
+
+    def test_category_matching_is_case_and_accent_insensitive(
+        self, make_operator: Any
+    ) -> None:
+        """A differently-cased Category still lands in its canonical bucket.
+
+        Without standardizing both sides, this would silently vanish (contribute to
+        no bucket) rather than crash - see docs/business_rules/categories.md.
+        """
+        operator = make_operator(
+            [{"Category": "RESTAURANT", "Value": -150, "Tier": "Lifestyle"}]
+        )
+        calculator = KpiCategoryCalculator(operator)
+
+        assert calculator.expenses_by_category["Restaurant"] == 150
 
     def test_expenses_budget_utilization_uses_the_flat_placeholder(
         self, make_operator: Any
@@ -354,6 +393,7 @@ class TestCardKpi:
         ("value", "target", "expected"),
         [
             (30, 50, "kpi-card-met"),  # lower is better, value <= target
+            (50, 50, "kpi-card-met"),  # boundary: equal counts as met either direction
             (80, 50, "kpi-card-not-met"),
         ],
     )

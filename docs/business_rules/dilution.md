@@ -30,7 +30,9 @@ matched falls back to a per-category default.
 `travel` shows up on the income side only via `TripBalanceCalculator`'s synthetic
 `"Saldo Viagem {year}"` balance transaction (see [travel.md](travel.md)) when a trip finishes
 under budget (`Value > 0`); it's diluted to match the expense-side `travel` treatment below, so
-the yearly trip result smooths the same way regardless of surplus or overrun.
+the yearly trip result smooths the same way regardless of surplus or overrun. This key only
+gets exercised because of the fixed pipeline order - see
+[README.md](README.md#pipeline-order-is-load-bearing).
 
 **Expenses** — `Value <= 0` (compared on the absolute value):
 
@@ -41,8 +43,18 @@ the yearly trip result smooths the same way regardless of surplus or overrun.
 | `home` >= R$250                                                                                                                                                                                                                                 | Yes (override) |
 | `subscriptions` >= R$60                                                                                                                                                                                                                         | Yes (override) |
 | `work` >= R$300                                                                                                                                                                                                                                 | Yes (override) |
-| `high costs`, `maintenance`, `travel`                                                                                                                                                                                                           | Yes            |
-| everything else (car/donation/home/subscriptions/work below threshold, commute, education, gift, health, personal felp, personal lena, pharmacy, physical, recreation, rent, restaurant, services, supermarket, transport, unknown, work lunch) | No             |
+| `travel`, account = `Trip Funds`                                                                                                                                                                                                                | Yes (override) |
+| `travel`, any other account, >= R$300                                                                                                                                                                                                          | Yes (override) |
+| `high costs`, `maintenance`                                                                                                                                                                                                                    | Yes            |
+| everything else (car/donation/home/subscriptions/work/travel below threshold, commute, education, gift, health, personal felp, personal lena, pharmacy, physical, recreation, rent, restaurant, services, supermarket, transport, unknown, work lunch) | No             |
+
+`travel` is the one category where dilution also checks `Account`, not just `Category` and
+`Value`: the `Trip Funds` account is reserved for the single pre-funded main trip (see
+[travel.md](travel.md)), which is always diluted regardless of amount - this is also how
+`TripBalanceCalculator`'s synthetic `"Saldo Viagem"` balance row is tagged. Any other account is
+ad-hoc travel (e.g. a one-off business trip - see [tiers.md](tiers.md)'s `travel` + tag `work`
+override), treated like the `work` category it's conceptually closest to: diluted only above the
+same R$300 threshold, not unconditionally.
 
 Every category used across the app must appear in these dicts — a category missing from the
 dict raises a `KeyError`. See [categories](categories.md) for the full category list.

@@ -4,6 +4,9 @@
 
 Applies to every transaction. Implemented in `src/app/utils/business/tiers.py`
 (`TierAssigner`), always applied by `ProcessedLoader` (not optional, unlike dilution).
+`TierAssigner` runs *before* `TripBalanceCalculator` in that pipeline - which is why the
+income dict below never needs a `travel` key, unlike dilution's - see
+[README.md](README.md#pipeline-order-is-load-bearing).
 
 ## Goal
 

@@ -14,8 +14,11 @@ health check, with visual pass/fail against a target where a target is known.
 
 A `CardKpi` shows `value` vs. `target`. If `target` is set, `higher_is_better` is required
 (raises `ValueError` otherwise) and the card is styled green (met) or red (not met) by
-comparing `value` against `target` in the direction `higher_is_better` implies. If `target` is
-`None`, the card renders neutrally (informational only, no pass/fail).
+comparing `value` against `target` in the direction `higher_is_better` implies:
+`value >= target` when `higher_is_better` is `True`, `value <= target` when it's `False`.
+Either way, `value == target` counts as met - hitting a target exactly is always a pass,
+never a boundary failure. If `target` is `None`, the card renders neutrally (informational
+only, no pass/fail).
 
 ## Rule: derived metrics (all formulas add `1e-5` to denominators to avoid division by zero)
 
@@ -25,11 +28,19 @@ comparing `value` against `target` in the direction `higher_is_better` implies. 
   **income**, not by total expenses)
 - `income_increase_perc`, `expenses_increase_perc`: current period vs. a comparison period
   (last 3/6/12 months), each computed independently via `KpiTrendsCalculator`
-- `expenses_inflation_perc = (expenses_increase_perc - income_increase_perc) / income_increase_perc`
-  — how much faster expenses are growing than income, normalized by income growth
+- `expenses_inflation_perc = expenses_increase_perc - income_increase_perc` — how much faster
+  expenses are growing than income, in percentage points. Deliberately a plain difference, not
+  a ratio of the two increase percentages: a ratio is unstable whenever income growth is near
+  zero (a common, unremarkable state, not a corner case) — the `1e-5` epsilon only avoids a
+  literal division by zero, not the result blowing up or flipping sign right around that
+  point. The difference is bounded and reads the same regardless of scale: "expenses grew 4
+  percentage points faster than income," not "340% faster" when income barely moved.
 - `elapsed_date_perc` (`KpiDateAdvancementCalculator`): how far through the selected date
   range "today" is; clamped to 1.0 once the range has fully elapsed — used to judge whether a
-  category is on pace mid-period
+  category is on pace mid-period. The KPIs page titles this card after the selected range's
+  own label (e.g. "This Month Advancement (%)", "Last Year Advancement (%)") rather than a
+  fixed "Month Advancement" — every non-"This Month" option is a fully-elapsed past period,
+  so a hardcoded "Month" label would read as wrong (and always show 100%) for those
 - Voucher (`VR`/`VA`) consumption %: spend on that account / income credited to that account
   in the period
 - Trip budget overrun: see [travel.md](travel.md) — always evaluated for the current year,
@@ -42,7 +53,10 @@ These are documented intent from `utils/business/kpis.py` comments, useful when 
 eventually filled in:
 
 - Net Income %: Beginner 10–20%, Ideal 25–40%, Elite 50%+
-- Expenses inflation %: Beginner <5%, Ideal <3%, Elite <0%
+- Expenses inflation %: Beginner <5%, Ideal <3%, Elite <0% — **these thresholds predate the
+  percentage-point difference formula above** (they were sized for the old ratio-of-ratios
+  form, which lived on a very different, unstable scale); re-derive them against the
+  difference formula before wiring up a real target, don't reuse these numbers as-is
 - Travel budget adherence (evaluated yearly): Beginner <20% overrun, Ideal <10%, Elite <0%
   (already partially wired: `TARGET_TRIP_BUDGET_OVERRUN = 0`)
 - Months of Runway (not implemented) = Emergency Fund / Average Monthly Expenses over last 6
@@ -51,8 +65,8 @@ eventually filled in:
 ## Category KPI breakdown: three actuals variants
 
 The per-category expander computes the same category's expenses three ways side by side:
-- **Only Ordinary**: dilutable transactions removed entirely (`tr.Remover(... Dilution is
-  True)`) — i.e. only non-diluted-eligible spend
+- **Only Ordinary**: dilutable transactions removed entirely (`tr.Remover` dropping every
+  row where `Dilution` is `True`) — i.e. only non-diluted-eligible spend
 - **With Extraordinary**: all transactions as paid, dilution not applied
 - **Diluted**: dilution applied (lumpy costs smoothed over 12 months)
 

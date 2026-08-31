@@ -3,6 +3,7 @@
 from typing import Any
 
 import pytest
+from utils.business.tiers import TierAssigner
 from utils.business.travel import TripBalanceCalculator
 from utils.globals import Account
 
@@ -182,9 +183,13 @@ def test_adjust_data_replaces_raw_rows_with_a_single_synthetic_balance_row(
     assert balance_row["Description"] == "Saldo Viagem 2025"
     assert balance_row["Value"] == pytest.approx(30000 - 825)
     assert balance_row["Tier"] == "Lifestyle"
+    assert balance_row["Dilution"]
     assert balance_row["Date"].strftime("%Y-%m-%d") == "2025-12-31"
     # The untouched Restaurant row survives unchanged
     assert (result["Category"] == "Restaurant").sum() == 1
+    # The synthetic row must not upcast Dilution from bool to object/float - which
+    # happens if pd.concat ever sees a row missing the "Dilution" key entirely
+    assert result["Dilution"].dtype == bool
 
 
 def test_adjust_data_inserts_a_balance_row_for_every_year_even_with_no_trip(
@@ -200,3 +205,106 @@ def test_adjust_data_inserts_a_balance_row_for_every_year_even_with_no_trip(
     balance_rows = result[result["Description"] == "Saldo Viagem 2024"]
     assert len(balance_rows) == 1
     assert balance_rows.iloc[0]["Value"] == 0
+
+
+def test_tier_assigner_would_key_error_on_travel_income(make_operator: Any) -> None:
+    """Pins down why TierAssigner must run before TripBalanceCalculator.
+
+    TierAssigner's income dict has no "travel" key (see tiers.md) - it doesn't need
+    one only because TripBalanceCalculator creates the sole travel-income row (the
+    synthetic "Saldo Viagem" balance) *after* TierAssigner has already run in
+    ProcessedLoader, hardcoding Tier itself instead (see
+    docs/business_rules/README.md#pipeline-order-is-load-bearing). Feeding a
+    Trip-Funds Travel income row to TierAssigner directly - simulating a reordered
+    pipeline - raises KeyError, exactly as that doc warns it would.
+    """
+    operator = make_operator(
+        [{"Category": "Travel", "Account": Account.TRIP_FUNDS, "Value": 100}]
+    )
+
+    with pytest.raises(KeyError):
+        _ = TierAssigner(operator).data
+
+
+def test_two_trips_in_the_same_year_merge_into_one_balance(
+    make_operator: Any, mock_transfers: Any, freeze_year: Any
+) -> None:
+    """Documented scope limit: one balance per year, not per trip.
+
+    travel.md is explicit that this is deliberate, not an oversight - Trip Funds is
+    reserved for a single main trip per year; a second trip funded the same way would
+    need to go through a different account to stay separate.
+    """
+    freeze_year(2025)
+    mock_transfers(
+        [
+            {
+                "Date": "31/12/2024",
+                "Conta origem": "Carteira",
+                "Conta destino": "Trip Funds",
+                "Value": 40000,  # funds two trips' budgets combined
+                "Tags": None,
+            }
+        ]
+    )
+    operator = make_operator(
+        [
+            {  # "Trip A"
+                "Account": Account.TRIP_FUNDS,
+                "Category": "Travel",
+                "Value": -15000,
+                "Date": "2025-03-01",
+            },
+            {  # "Trip B" - a second, unrelated trip, same account/category/year
+                "Account": Account.TRIP_FUNDS,
+                "Category": "Travel",
+                "Value": -10000,
+                "Date": "2025-09-01",
+            },
+        ]
+    )
+
+    result = TripBalanceCalculator(operator).data
+
+    balance_rows = result[result["Description"] == "Saldo Viagem 2025"]
+    assert len(balance_rows) == 1
+    assert balance_rows.iloc[0]["Value"] == pytest.approx(40000 - 15000 - 10000)
+
+
+def test_current_year_balance_is_provisional_not_a_concluded_result(
+    make_operator: Any, mock_transfers: Any, freeze_year: Any
+) -> None:
+    """Documented caveat: an under-budget figure mid-year may just mean not-spent-yet.
+
+    A large budget with little spent so far reads as heavily under budget, exactly as
+    it would for a genuinely frugal, concluded trip - the rule has no way to tell the
+    two apart, which is why travel.md calls the current year's figure provisional.
+    """
+    freeze_year(2025)
+    mock_transfers(
+        [
+            {
+                "Date": "31/12/2024",
+                "Conta origem": "Carteira",
+                "Conta destino": "Trip Funds",
+                "Value": 30000,
+                "Tags": "orlando",
+            }
+        ]
+    )
+    # Only a small deposit-like expense so far - the trip likely hasn't happened yet
+    operator = make_operator(
+        [
+            {
+                "Account": Account.TRIP_FUNDS,
+                "Category": "Travel",
+                "Value": -500,
+                "Date": "2025-01-15",
+            }
+        ]
+    )
+
+    result = TripBalanceCalculator(operator).data
+
+    balance_row = result[result["Description"] == "Saldo Viagem 2025"].iloc[0]
+    assert balance_row["Value"] == pytest.approx(30000 - 500)

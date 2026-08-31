@@ -37,7 +37,7 @@ class PreProcessedLoader(Operator):
 
     @property
     def data(self) -> pd.DataFrame:
-        """Preprocessed data: actuals only, dates parsed, tags split into a list."""
+        """Preprocessed data: actuals only, dates parsed, Year/Month, tags as a list."""
         return self._data
 
     def _preprocess_data(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -53,7 +53,9 @@ class PreProcessedLoader(Operator):
         # Convert dates to datetime
         data_["Date"] = pd.to_datetime(data_["Date"], format="%d/%m/%Y")
 
-        # Extract month from date
+        # Extract year and month from date - the yearly aggregators in
+        # utils/operators/aggregator.py group on this Year column
+        data_["Year"] = data_["Date"].dt.year
         data_["Month"] = data_["Date"].dt.to_period("M").dt.to_timestamp()
 
         # Parse tags
@@ -71,6 +73,10 @@ class ProcessedLoader(Operator):
 
     def __init__(self) -> None:
         """Initialize the processed data loader."""
+        # This order is load-bearing, not incidental - see docs/business_rules/README.md
+        # ("Pipeline order is load-bearing"). TripBalanceCalculator's synthetic balance
+        # row is created after both assigners, so it hardcodes Tier/Dilution itself
+        # instead of needing entries for "travel" in TierAssigner's income dict
         loader = Loader()
         self._processed_loader = TripBalanceCalculator(
             TierAssigner(DilutionAssigner(PreProcessedLoader(loader)))

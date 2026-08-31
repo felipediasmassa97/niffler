@@ -33,11 +33,13 @@ class FakeOperator(Operator):
 
 
 def make_transactions(rows: list[dict[str, Any]]) -> pd.DataFrame:
-    """Build a DataFrame matching `PreProcessedLoader`'s output shape.
+    """Build a DataFrame matching `DilutionAssigner`'s output shape.
 
     Each row may omit any column; sensible defaults fill in the rest so a test only
     has to specify the fields relevant to the rule under test. `Month` is derived from
-    `Date`, matching what `PreProcessedLoader` itself computes.
+    `Date`, matching what `PreProcessedLoader` itself computes. `Dilution` defaults to
+    `False` since `TripBalanceCalculator` (the last pipeline stage) expects it already
+    assigned by `DilutionAssigner` - a real bool-dtype column, not an absent one.
     """
     defaults = {
         "Date": pd.Timestamp.now().normalize(),
@@ -48,6 +50,7 @@ def make_transactions(rows: list[dict[str, Any]]) -> pd.DataFrame:
         "Category": "Unknown",
         "Subcategory": None,
         "Tags": [],
+        "Dilution": False,
     }
     columns = [*defaults, "Month"]
     if not rows:

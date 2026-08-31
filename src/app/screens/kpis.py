@@ -85,8 +85,11 @@ def kpis() -> None:
         KpiCalculator(fl.Last12MonthsFilter(loader)),
     )
     calc_cat = KpiCategoryCalculator(date_filter)
+    # Do not compare with `is True`: pandas stores a bool column as numpy.bool_, not
+    # Python's `bool` singleton, so `row["Dilution"] is True` is always False and this
+    # Remover would silently filter out nothing
     calc_cat_not_dil_without_extra = KpiCategoryCalculator(
-        tr.Remover(date_filter_cls(loader_), lambda row: row["Dilution"] is True)
+        tr.Remover(date_filter_cls(loader_), lambda row: row["Dilution"])
     )
     calc_cat_not_dil_with_extra = KpiCategoryCalculator(date_filter_cls(loader_))
     calc_cat_dil = KpiCategoryCalculator(date_filter_cls(Diluter(loader_)))
@@ -95,8 +98,12 @@ def kpis() -> None:
     calc_va = KpiVaCalculator(date_filter)
     calc_trip = KpiMainTripCalculator(loader)  # do not filter by date for trip budget
 
+    # Label follows the selected range, not just "Month" - the picker also offers Last
+    # Month/Last 3 Months/Last Year, and a hardcoded "Month Advancement" title read as
+    # wrong (and always 100%, since those ranges are already fully elapsed) for those
     CardKpiPercentage(
-        title="Month Advancement (%)", value=calc_adv.elapsed_date_perc
+        title=f"{cmp_date_filter['label']} Advancement (%)",
+        value=calc_adv.elapsed_date_perc,
     ).card()
 
     _render_big_picture(calc)
