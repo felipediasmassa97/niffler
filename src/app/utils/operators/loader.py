@@ -37,7 +37,7 @@ class PreProcessedLoader(Operator):
 
     @property
     def data(self) -> pd.DataFrame:
-        """Preprocessed data: actuals only, dates parsed, tags split into a list."""
+        """Preprocessed data: actuals only, dates parsed, Year/Month, tags as a list."""
         return self._data
 
     def _preprocess_data(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -53,7 +53,9 @@ class PreProcessedLoader(Operator):
         # Convert dates to datetime
         data_["Date"] = pd.to_datetime(data_["Date"], format="%d/%m/%Y")
 
-        # Extract month from date
+        # Extract year and month from date - the yearly aggregators in
+        # utils/operators/aggregator.py group on this Year column
+        data_["Year"] = data_["Date"].dt.year
         data_["Month"] = data_["Date"].dt.to_period("M").dt.to_timestamp()
 
         # Parse tags
