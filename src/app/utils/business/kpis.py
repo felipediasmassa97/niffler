@@ -184,10 +184,17 @@ class KpiTrendsCalculator:
 
     @property
     def expenses_inflation_perc(self) -> float:
-        """Expenses inflation percentage."""
-        return (self.expenses_increase_perc - self.income_increase_perc) / (
-            self.income_increase_perc + 1e-5
-        )
+        """How much faster expenses grew than income, in percentage points.
+
+        A plain difference, not a ratio of the two increase percentages - that ratio
+        form is unstable whenever income growth is near zero (a common, unremarkable
+        state, not a corner case), since the epsilon only avoids a literal division by
+        zero without preventing the result from blowing up or flipping sign right
+        around that point. The difference is bounded and reads the same way regardless
+        of scale: "expenses grew 4 percentage points faster than income" rather than
+        "expenses grew 340% faster than income" when income barely moved. See kpis.md.
+        """
+        return self.expenses_increase_perc - self.income_increase_perc
 
 
 class KpiCategoryCalculator(KpiCalculator):

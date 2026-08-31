@@ -98,7 +98,11 @@ class TestKpiTrendsCalculator:
         assert trends.income_increase_perc == pytest.approx(0.2, rel=1e-3)
 
     def test_expenses_inflation_percentage(self, make_operator: Any) -> None:
-        """Inflation compares how much faster expenses grew than income."""
+        """Inflation is a plain percentage-point difference, not a ratio.
+
+        Deliberately not (expenses_increase - income_increase) / income_increase: that
+        ratio form is unstable whenever income growth is near zero - see kpis.md.
+        """
         current = KpiCalculator(
             make_operator(
                 [{"Value": 1100, "Tier": "Fixed"}, {"Value": -1200, "Tier": "Fixed"}]
@@ -111,8 +115,28 @@ class TestKpiTrendsCalculator:
         )
         trends = KpiTrendsCalculator(current, previous)
 
-        # income +10%, expenses +20% -> inflation = (0.2 - 0.1) / 0.1 = 1.0
-        assert trends.expenses_inflation_perc == pytest.approx(1.0, rel=1e-3)
+        # income +10%, expenses +20% -> inflation = 0.2 - 0.1 = 0.1 (10 points)
+        assert trends.expenses_inflation_perc == pytest.approx(0.1, rel=1e-3)
+
+    def test_expenses_inflation_percentage_is_stable_near_zero_income_growth(
+        self, make_operator: Any
+    ) -> None:
+        """The old ratio formula blew up here; the difference formula stays bounded."""
+        current = KpiCalculator(
+            make_operator(
+                [{"Value": 1000.01, "Tier": "Fixed"}, {"Value": -1200, "Tier": "Fixed"}]
+            )
+        )
+        previous = KpiCalculator(
+            make_operator(
+                [{"Value": 1000, "Tier": "Fixed"}, {"Value": -1000, "Tier": "Fixed"}]
+            )
+        )
+        trends = KpiTrendsCalculator(current, previous)
+
+        # income growth ~0%, expenses +20% -> inflation ~= 0.2 (20 points), not a
+        # blown-up or sign-flipped ratio
+        assert trends.expenses_inflation_perc == pytest.approx(0.2, abs=1e-3)
 
 
 class TestKpiCategoryCalculator:

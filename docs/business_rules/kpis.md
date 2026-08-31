@@ -28,8 +28,13 @@ only, no pass/fail).
   **income**, not by total expenses)
 - `income_increase_perc`, `expenses_increase_perc`: current period vs. a comparison period
   (last 3/6/12 months), each computed independently via `KpiTrendsCalculator`
-- `expenses_inflation_perc = (expenses_increase_perc - income_increase_perc) / income_increase_perc`
-  — how much faster expenses are growing than income, normalized by income growth
+- `expenses_inflation_perc = expenses_increase_perc - income_increase_perc` — how much faster
+  expenses are growing than income, in percentage points. Deliberately a plain difference, not
+  a ratio of the two increase percentages: a ratio is unstable whenever income growth is near
+  zero (a common, unremarkable state, not a corner case) — the `1e-5` epsilon only avoids a
+  literal division by zero, not the result blowing up or flipping sign right around that
+  point. The difference is bounded and reads the same regardless of scale: "expenses grew 4
+  percentage points faster than income," not "340% faster" when income barely moved.
 - `elapsed_date_perc` (`KpiDateAdvancementCalculator`): how far through the selected date
   range "today" is; clamped to 1.0 once the range has fully elapsed — used to judge whether a
   category is on pace mid-period. The KPIs page titles this card after the selected range's
@@ -48,7 +53,10 @@ These are documented intent from `utils/business/kpis.py` comments, useful when 
 eventually filled in:
 
 - Net Income %: Beginner 10–20%, Ideal 25–40%, Elite 50%+
-- Expenses inflation %: Beginner <5%, Ideal <3%, Elite <0%
+- Expenses inflation %: Beginner <5%, Ideal <3%, Elite <0% — **these thresholds predate the
+  percentage-point difference formula above** (they were sized for the old ratio-of-ratios
+  form, which lived on a very different, unstable scale); re-derive them against the
+  difference formula before wiring up a real target, don't reuse these numbers as-is
 - Travel budget adherence (evaluated yearly): Beginner <20% overrun, Ideal <10%, Elite <0%
   (already partially wired: `TARGET_TRIP_BUDGET_OVERRUN = 0`)
 - Months of Runway (not implemented) = Emergency Fund / Average Monthly Expenses over last 6
