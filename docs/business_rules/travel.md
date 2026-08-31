@@ -6,6 +6,16 @@ Applies to transactions on the `Trip Funds` Mobills account and the `Travel` cat
 Implemented in `src/app/utils/business/travel.py` (`TripBalanceCalculator`), always applied by
 `ProcessedLoader`.
 
+This rule assumes **one main trip per year**. Every `Trip Funds`/`Travel` transaction in a
+given year is combined into that year's single balance figure — there's no notion of "which
+trip" a transaction belongs to. This is a deliberate scope limit, not an oversight: keep
+`Trip Funds` reserved for the single pre-funded main trip, and route any other travel (a
+work trip, a smaller side trip) through a different account instead — which the app's own
+data already does naturally (see [dilution.md](dilution.md)'s account-based main-trip vs.
+ad-hoc-travel distinction, and [tiers.md](tiers.md)'s `travel` + tag `work` override). If a
+second trip is ever funded through `Trip Funds` in the same calendar year, its budget and
+actuals will silently merge into the main trip's balance.
+
 ## Goal
 
 The main yearly trip is pre-funded a year in advance: money is set aside in year N-1 and spent
@@ -41,6 +51,13 @@ For each year N from 2024 to the current year:
 Note: the pre-funding transfer transaction (year N-1, `Wallet` → `Trip Funds`) is a `Transfer`
 type and is separate from the "Receitas e Despesas" sheet dataset the app otherwise loads — it
 never appears as an expense in year N-1's view.
+
+**The current year's balance is provisional, not a final result.** The rule doesn't know
+whether this year's trip has actually happened yet — it just computes budget minus
+spend-to-date, for every year from 2024 through today, unconditionally. Mid-year, before most
+of the trip's spending has occurred, this reads as "under budget" simply because the money
+hasn't been spent yet, not because the trip actually came in under budget. Treat the current
+year's figure as in-progress; only a past year's balance is a settled result.
 
 ## KPI usage
 
