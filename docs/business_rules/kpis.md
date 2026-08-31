@@ -32,7 +32,10 @@ only, no pass/fail).
   — how much faster expenses are growing than income, normalized by income growth
 - `elapsed_date_perc` (`KpiDateAdvancementCalculator`): how far through the selected date
   range "today" is; clamped to 1.0 once the range has fully elapsed — used to judge whether a
-  category is on pace mid-period
+  category is on pace mid-period. The KPIs page titles this card after the selected range's
+  own label (e.g. "This Month Advancement (%)", "Last Year Advancement (%)") rather than a
+  fixed "Month Advancement" — every non-"This Month" option is a fully-elapsed past period,
+  so a hardcoded "Month" label would read as wrong (and always show 100%) for those
 - Voucher (`VR`/`VA`) consumption %: spend on that account / income credited to that account
   in the period
 - Trip budget overrun: see [travel.md](travel.md) — always evaluated for the current year,

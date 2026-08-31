@@ -98,8 +98,12 @@ def kpis() -> None:
     calc_va = KpiVaCalculator(date_filter)
     calc_trip = KpiMainTripCalculator(loader)  # do not filter by date for trip budget
 
+    # Label follows the selected range, not just "Month" - the picker also offers Last
+    # Month/Last 3 Months/Last Year, and a hardcoded "Month Advancement" title read as
+    # wrong (and always 100%, since those ranges are already fully elapsed) for those
     CardKpiPercentage(
-        title="Month Advancement (%)", value=calc_adv.elapsed_date_perc
+        title=f"{cmp_date_filter['label']} Advancement (%)",
+        value=calc_adv.elapsed_date_perc,
     ).card()
 
     _render_big_picture(calc)
