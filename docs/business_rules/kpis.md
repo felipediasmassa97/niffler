@@ -14,8 +14,11 @@ health check, with visual pass/fail against a target where a target is known.
 
 A `CardKpi` shows `value` vs. `target`. If `target` is set, `higher_is_better` is required
 (raises `ValueError` otherwise) and the card is styled green (met) or red (not met) by
-comparing `value` against `target` in the direction `higher_is_better` implies. If `target` is
-`None`, the card renders neutrally (informational only, no pass/fail).
+comparing `value` against `target` in the direction `higher_is_better` implies:
+`value >= target` when `higher_is_better` is `True`, `value <= target` when it's `False`.
+Either way, `value == target` counts as met - hitting a target exactly is always a pass,
+never a boundary failure. If `target` is `None`, the card renders neutrally (informational
+only, no pass/fail).
 
 ## Rule: derived metrics (all formulas add `1e-5` to denominators to avoid division by zero)
 

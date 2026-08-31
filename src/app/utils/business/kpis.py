@@ -430,7 +430,16 @@ class CardKpi:
         if self.target is not None and self.higher_is_better is None:
             msg = "higher_is_better must be passed"
             raise ValueError(msg)
-        if (self.value >= self.target) == self.higher_is_better:
+        # Hitting the target exactly always counts as met, in either direction -
+        # previously always compared with `>=` then XOR'd against higher_is_better,
+        # which made value == target "not met" whenever higher_is_better was False
+        # (e.g. landing exactly on a spending cap read as a failure)
+        is_met = (
+            self.value >= self.target
+            if self.higher_is_better
+            else self.value <= self.target
+        )
+        if is_met:
             return "kpi-card-met"
         return "kpi-card-not-met"
 

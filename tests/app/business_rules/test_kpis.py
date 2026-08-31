@@ -354,6 +354,7 @@ class TestCardKpi:
         ("value", "target", "expected"),
         [
             (30, 50, "kpi-card-met"),  # lower is better, value <= target
+            (50, 50, "kpi-card-met"),  # boundary: equal counts as met either direction
             (80, 50, "kpi-card-not-met"),
         ],
     )
