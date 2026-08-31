@@ -26,6 +26,17 @@ INFRA_ROLE_NAME="niffler-infra"
 EXECUTION_ROLE_NAME="niffler-infra-execution-role"
 INFRA_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${INFRA_ROLE_NAME}"
 
+# GitHub Actions CI assumes niffler-infra too (see "GithubActionsOidc" trust statement
+# below), scoped to this one repo via the OIDC `sub` claim - no separate CI role
+GITHUB_REPO="felipediasmassa97/niffler"
+GITHUB_OIDC_ARN="arn:aws:iam::${ACCOUNT_ID}:oidc-provider/token.actions.githubusercontent.com"
+# AWS validates GitHub's certificate chain itself; these thumbprints are only kept
+# because create-open-id-connect-provider still requires the field
+GITHUB_OIDC_THUMBPRINTS=(
+  "6938fd4d98bab03faadb97b34396831e3780aea1"
+  "1c58a3a8518e8759bf075b76b750d4f2df264fcd"
+)
+
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "$WORKDIR"' EXIT
 
@@ -38,14 +49,17 @@ fi
 
 echo "==> Writing IAM policy documents"
 
-# Account-root principal + ArnLike, rather than the SSO permission-set role ARN
-# directly: the permission-set role is recreated (with a new hash) whenever the
-# permission set is edited, which would silently break a hardcoded principal
+# Two trust statements: the human SSO session (account-root principal + ArnLike,
+# rather than the SSO permission-set role ARN directly - that role is recreated with a
+# new hash whenever the permission set is edited, which would silently break a
+# hardcoded principal), and GitHub Actions CI via OIDC, scoped to this exact repo so no
+# other GitHub repo can assume this role
 cat > "${WORKDIR}/infra-role-trust.json" <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "HumanSsoSession",
       "Effect": "Allow",
       "Principal": { "AWS": "arn:aws:iam::${ACCOUNT_ID}:root" },
       "Action": ["sts:AssumeRole", "sts:TagSession"],
@@ -53,6 +67,16 @@ cat > "${WORKDIR}/infra-role-trust.json" <<EOF
         "ArnLike": {
           "aws:PrincipalArn": "arn:aws:iam::${ACCOUNT_ID}:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_AdministratorAccess_*"
         }
+      }
+    },
+    {
+      "Sid": "GithubActionsOidc",
+      "Effect": "Allow",
+      "Principal": { "Federated": "${GITHUB_OIDC_ARN}" },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
+        "StringLike": { "token.actions.githubusercontent.com:sub": "repo:${GITHUB_REPO}:*" }
       }
     }
   ]
@@ -280,6 +304,19 @@ create_or_update_role() {
     --tags "Key=AppName,Value=${APP_NAME}" --profile "$SSO_PROFILE"
 }
 
+echo "==> Ensuring the GitHub Actions OIDC provider exists"
+if aws iam get-open-id-connect-provider --open-id-connect-provider-arn "$GITHUB_OIDC_ARN" \
+    --profile "$SSO_PROFILE" >/dev/null 2>&1; then
+  echo "    Provider already exists"
+else
+  echo "    Creating provider"
+  aws iam create-open-id-connect-provider \
+    --url "https://token.actions.githubusercontent.com" \
+    --client-id-list "sts.amazonaws.com" \
+    --thumbprint-list "${GITHUB_OIDC_THUMBPRINTS[@]}" \
+    --profile "$SSO_PROFILE" >/dev/null
+fi
+
 echo "==> Creating ${INFRA_ROLE_NAME}"
 create_or_update_role "$INFRA_ROLE_NAME" "${WORKDIR}/infra-role-trust.json" \
   "Assumable by the human SSO session; drives CloudFormation and manual S3/SSM operations"
@@ -301,6 +338,9 @@ echo ""
 echo "Verify the AppName tag (load-bearing - every policy is scoped by it):"
 echo "  aws iam list-role-tags --role-name ${INFRA_ROLE_NAME} --profile ${SSO_PROFILE}"
 echo "  aws iam list-role-tags --role-name ${EXECUTION_ROLE_NAME} --profile ${SSO_PROFILE}"
+echo ""
+echo "Verify both trust statements on ${INFRA_ROLE_NAME} (human SSO + GitHub OIDC):"
+echo "  aws iam get-role --role-name ${INFRA_ROLE_NAME} --profile ${SSO_PROFILE}"
 echo ""
 echo "Then verify it:"
 echo "  aws sts get-caller-identity --profile niffler-infra"

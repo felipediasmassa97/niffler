@@ -1,0 +1,34 @@
+name: Run tests
+description: Run the full pytest suite against the dev environment's AWS data
+
+inputs:
+  streamlit-secrets-toml:
+    description: Full contents of src/app/.streamlit/secrets.toml for the test environment
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+
+    - name: Write Streamlit secrets
+      shell: bash
+      run: |
+        mkdir -p src/app/.streamlit
+        cat > src/app/.streamlit/secrets.toml <<'SECRETS_EOF'
+        ${{ inputs.streamlit-secrets-toml }}
+        SECRETS_EOF
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version-file: .python-version
+
+    - uses: astral-sh/setup-uv@v7
+
+    - name: Install dependencies
+      shell: bash
+      run: uv sync --all-extras --all-groups
+
+    - name: Run pytest
+      shell: bash
+      run: uv run pytest tests/ -v

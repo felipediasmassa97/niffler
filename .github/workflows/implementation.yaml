@@ -1,0 +1,55 @@
+name: Implementation
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/quality-assurance
+
+  test:
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/run-tests
+        with:
+          streamlit-secrets-toml: ${{ secrets.STREAMLIT_SECRETS_TOML_DEV }}
+
+  deploy-dev:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/infra-deploy
+        with:
+          environment: dev
+
+  deploy-demo:
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment: demo
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/infra-deploy
+        with:
+          environment: demo
+
+  deploy-prod:
+    needs: deploy-demo
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/infra-deploy
+        with:
+          environment: prod
