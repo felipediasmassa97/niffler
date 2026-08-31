@@ -132,6 +132,21 @@ class TestKpiCategoryCalculator:
         assert by_category["Restaurant"] == 150
         assert by_category["Car"] == 0
 
+    def test_category_matching_is_case_and_accent_insensitive(
+        self, make_operator: Any
+    ) -> None:
+        """A differently-cased Category still lands in its canonical bucket.
+
+        Without standardizing both sides, this would silently vanish (contribute to
+        no bucket) rather than crash - see docs/business_rules/categories.md.
+        """
+        operator = make_operator(
+            [{"Category": "RESTAURANT", "Value": -150, "Tier": "Lifestyle"}]
+        )
+        calculator = KpiCategoryCalculator(operator)
+
+        assert calculator.expenses_by_category["Restaurant"] == 150
+
     def test_expenses_budget_utilization_uses_the_flat_placeholder(
         self, make_operator: Any
     ) -> None:

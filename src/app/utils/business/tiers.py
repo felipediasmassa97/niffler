@@ -1,7 +1,7 @@
 """Tiers business rules."""
 
 import pandas as pd
-from unidecode import unidecode
+from utils.business import standardize_string
 from utils.operators import Operator
 
 # fixit add most actionable, mid-actionable, least actionable tiers
@@ -33,9 +33,9 @@ class TierAssigner(Operator):
 
     def _assign_tiers(self, row: pd.Series) -> str:
         """Assign tiers to the given data."""
-        category = self._standardize_string(row["Category"])
-        description = self._standardize_string(row["Description"])
-        tags = [self._standardize_string(tag) for tag in row["Tags"]]
+        category = standardize_string(row["Category"])
+        description = standardize_string(row["Description"])
+        tags = [standardize_string(tag) for tag in row["Tags"]]
         value = row["Value"]
 
         if value > 0:
@@ -104,7 +104,3 @@ class TierAssigner(Operator):
             "work": "Variable",
             "work lunch": "Variable",
         }[category]
-
-    def _standardize_string(self, s: str) -> str:
-        """Standardize a string by removing accents and converting to lowercase."""
-        return unidecode(s).lower()

@@ -7,6 +7,20 @@ rules. Source of truth for the category _set_ is `CATEGORY_BUDGETS` in
 `src/app/utils/business/budget.py` — every dict keyed by category elsewhere in the codebase
 (dilution, tiers) must have exactly this key set or a `KeyError` is raised at runtime.
 
+## Rule: case/accent-insensitive matching
+
+Every comparison against a `Category` value — dilution and tier assignment, and the KPI
+category breakdown — standardizes with `standardize_string`
+(`src/app/utils/business/__init__.py`: strip accents, lowercase) before comparing, so
+`"Personal Felp"`, `"personal felp"`, and `"PERSONAL FELP"` are all the same category. This
+matters most for the KPI breakdown (`KpiCategoryCalculator`): unlike dilution/tiers (which
+raise `KeyError` on an unrecognized category), it does an exact-match dict comprehension over
+`CATEGORY_BUDGETS`, so a mismatch there doesn't crash — it silently contributes to no bucket.
+`CATEGORY_BUDGETS`'s own keys are the canonical display-cased strings and are only used
+as-is for labels and dict lookups keyed by those exact strings (e.g. `CATEGORY_BUDGETS[cat]`
+for a `cat` already drawn from its own keys) — never compared directly against raw `Category`
+values.
+
 ## Goal
 
 Rank categories by how much reviewing them regularly is expected to change behavior, so

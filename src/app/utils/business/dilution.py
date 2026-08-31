@@ -1,7 +1,7 @@
 """Dilution business rules."""
 
 import pandas as pd
-from unidecode import unidecode
+from utils.business import standardize_string
 from utils.globals import Account
 from utils.operators import Operator
 
@@ -33,7 +33,7 @@ class DilutionAssigner(Operator):
 
     def _assign_dilution(self, row: pd.Series) -> bool:
         """Assign dilution to the given data."""
-        category = self._standardize_string(row["Category"])
+        category = standardize_string(row["Category"])
         value = row["Value"]
         if value > 0:
             return self._assign_dilution_income(category, value)
@@ -100,10 +100,6 @@ class DilutionAssigner(Operator):
             "unknown": False,
             "work lunch": False,
         }[category]
-
-    def _standardize_string(self, s: str) -> str:
-        """Standardize a string by removing accents and converting to lowercase."""
-        return unidecode(s).lower()
 
 
 class Diluter(DilutionAssigner):

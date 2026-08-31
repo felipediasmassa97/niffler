@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 import streamlit as st
+from utils.business import standardize_string
 from utils.business.budget import CATEGORY_BUDGETS
 from utils.business.travel import TripBalanceCalculator
 from utils.globals import Account
@@ -200,8 +201,15 @@ class KpiCategoryCalculator(KpiCalculator):
         return [item[0] for item in items_sorted]
 
     def get_category_data(self, data: pd.DataFrame, category: str) -> pd.DataFrame:
-        """Get category data."""
-        return data[data["Category"] == category]
+        """Get category data, matching case/accent-insensitively like dilution/tiers.
+
+        Without this, a category typed with unexpected casing/accents in Mobills would
+        still dilute/tier correctly (both standardize) but silently vanish from every
+        per-category KPI bucket here (exact match, no bucket to fall into) - see
+        docs/business_rules/categories.md.
+        """
+        target = standardize_string(category)
+        return data[data["Category"].apply(standardize_string) == target]
 
     @property
     def income_categories_sorted(self) -> list[str]:
