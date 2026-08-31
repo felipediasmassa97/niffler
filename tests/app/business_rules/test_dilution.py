@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 from utils.business.dilution import Diluter, DilutionAssigner
+from utils.globals import Account
 
 
 class TestDilutionAssignerIncome:
@@ -56,7 +57,6 @@ class TestDilutionAssignerExpense:
             ("Work", -299.99, False),
             ("High Costs", -1, True),  # always diluted, no threshold
             ("Maintenance", -1, True),
-            ("Travel", -1, True),
             ("Commute", -10000, False),  # never diluted, regardless of size
             ("Education", -10000, False),
             ("Gift", -10000, False),
@@ -99,6 +99,46 @@ class TestDilutionAssignerExpense:
 
         with pytest.raises(KeyError):
             _ = DilutionAssigner(operator).data
+
+
+class TestDilutionAssignerExpenseTravel:
+    """`travel` also checks Account, not just Category/Value (see dilution.md).
+
+    Trip Funds is the single pre-funded main trip - always diluted, any amount.
+    Any other account is ad-hoc travel (e.g. a one-off work trip), diluted only above
+    the same threshold as the `work` category it's conceptually closest to.
+    """
+
+    def test_trip_funds_travel_is_always_diluted_regardless_of_amount(
+        self, make_operator: Any
+    ) -> None:
+        """The main trip's synthetic balance row is diluted no matter how small."""
+        operator = make_operator(
+            [{"Category": "Travel", "Account": Account.TRIP_FUNDS, "Value": -1}]
+        )
+
+        result = DilutionAssigner(operator).data
+
+        assert result.iloc[0]["Dilution"]
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            (-300, True),  # override threshold, inclusive - same as `work`
+            (-299.99, False),
+        ],
+    )
+    def test_non_trip_funds_travel_uses_the_work_threshold(
+        self, make_operator: Any, value: float, *, expected: bool
+    ) -> None:
+        """Ad-hoc travel (any account but Trip Funds) follows a value threshold."""
+        operator = make_operator(
+            [{"Category": "Travel", "Account": "Carteira", "Value": value}]
+        )
+
+        result = DilutionAssigner(operator).data
+
+        assert result.iloc[0]["Dilution"] == expected
 
 
 class TestDiluter:

@@ -2,6 +2,7 @@
 
 import pandas as pd
 from unidecode import unidecode
+from utils.globals import Account
 from utils.operators import Operator
 
 # Value-based dilution overrides - see docs/business_rules/dilution.md
@@ -36,7 +37,7 @@ class DilutionAssigner(Operator):
         value = row["Value"]
         if value > 0:
             return self._assign_dilution_income(category, value)
-        return self._assign_dilution_expense(category, abs(value))
+        return self._assign_dilution_expense(category, abs(value), row["Account"])
 
     def _assign_dilution_income(self, category: str, value: float) -> bool:
         """Assign dilution for income entries."""
@@ -54,30 +55,37 @@ class DilutionAssigner(Operator):
             "travel": True,
         }[category]
 
-    def _assign_dilution_expense(self, category: str, value: float) -> bool:
+    def _assign_dilution_expense(
+        self, category: str, value: float, account: str
+    ) -> bool:
         """Assign dilution for expense entries."""
-        # Specific cases
-        if category == "car" and value >= CAR_DILUTION_THRESHOLD:
-            return True
-        if category == "donation" and value >= DONATION_DILUTION_THRESHOLD:
-            return True
-        if category == "home" and value >= HOME_DILUTION_THRESHOLD:
-            return True
-        if category == "subscriptions" and value >= SUBSCRIPTIONS_DILUTION_THRESHOLD:
-            return True
-        if category == "work" and value >= WORK_DILUTION_THRESHOLD:
-            return True
+        # Travel is always diluted for the main trip (Trip Funds account - this is
+        # also how TripBalanceCalculator's synthetic "Saldo Viagem" balance row is
+        # tagged, see travel.md). Any other account is ad-hoc travel (e.g. a one-off
+        # work trip - see tiers.md's `travel` + tag `work` override), treated like the
+        # `work` category it's conceptually closest to: diluted only above threshold
+        if category == "travel":
+            return account == Account.TRIP_FUNDS or value >= WORK_DILUTION_THRESHOLD
 
-        # General per-category assignment
+        # Value-based overrides, checked before the per-category default
+        thresholds = {
+            "car": CAR_DILUTION_THRESHOLD,
+            "donation": DONATION_DILUTION_THRESHOLD,
+            "home": HOME_DILUTION_THRESHOLD,
+            "subscriptions": SUBSCRIPTIONS_DILUTION_THRESHOLD,
+            "work": WORK_DILUTION_THRESHOLD,
+        }
+        if category in thresholds:
+            return value >= thresholds[category]
+
+        # General per-category assignment - car/donation/home/subscriptions/work are
+        # handled entirely by the threshold check above (in or out, never falls here)
         return {
-            "car": False,
             "commute": False,
-            "donation": False,
             "education": False,
             "gift": False,
             "health": False,
             "high costs": True,
-            "home": False,
             "maintenance": True,
             "personal felp": False,
             "personal lena": False,
@@ -87,12 +95,9 @@ class DilutionAssigner(Operator):
             "rent": False,
             "restaurant": False,
             "services": False,
-            "subscriptions": False,
             "supermarket": False,
             "transport": False,
-            "travel": True,
             "unknown": False,
-            "work": False,
             "work lunch": False,
         }[category]
 
