@@ -85,8 +85,11 @@ def kpis() -> None:
         KpiCalculator(fl.Last12MonthsFilter(loader)),
     )
     calc_cat = KpiCategoryCalculator(date_filter)
+    # Do not compare with `is True`: pandas stores a bool column as numpy.bool_, not
+    # Python's `bool` singleton, so `row["Dilution"] is True` is always False and this
+    # Remover would silently filter out nothing
     calc_cat_not_dil_without_extra = KpiCategoryCalculator(
-        tr.Remover(date_filter_cls(loader_), lambda row: row["Dilution"] is True)
+        tr.Remover(date_filter_cls(loader_), lambda row: row["Dilution"])
     )
     calc_cat_not_dil_with_extra = KpiCategoryCalculator(date_filter_cls(loader_))
     calc_cat_dil = KpiCategoryCalculator(date_filter_cls(Diluter(loader_)))

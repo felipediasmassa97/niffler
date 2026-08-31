@@ -51,8 +51,8 @@ eventually filled in:
 ## Category KPI breakdown: three actuals variants
 
 The per-category expander computes the same category's expenses three ways side by side:
-- **Only Ordinary**: dilutable transactions removed entirely (`tr.Remover(... Dilution is
-  True)`) — i.e. only non-diluted-eligible spend
+- **Only Ordinary**: dilutable transactions removed entirely (`tr.Remover` dropping every
+  row where `Dilution` is `True`) — i.e. only non-diluted-eligible spend
 - **With Extraordinary**: all transactions as paid, dilution not applied
 - **Diluted**: dilution applied (lumpy costs smoothed over 12 months)
 

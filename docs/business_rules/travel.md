@@ -29,7 +29,12 @@ For each year N from 2024 to the current year:
      captured in the balance).
    - Insert one synthetic transaction dated Dec 31 of year N: description
      `"Saldo Viagem {year}"`, `Value = balance`, `Account = Trip Funds`,
-     `Category = Travel`, `Tier = Lifestyle`.
+     `Category = Travel`, `Tier = Lifestyle`, `Dilution = True`. `Tier` and `Dilution`
+     are hardcoded rather than computed by `TierAssigner`/`DilutionAssigner`, since this
+     row is created downstream of both in the pipeline and neither ever sees it - both
+     values match what those rules would have assigned anyway, since `Travel` is always
+     Lifestyle-tiered and always diluted regardless of income/expense direction (see
+     [dilution.md](dilution.md)/[tiers.md](tiers.md)).
 
 Note: the pre-funding transfer transaction (year N-1, `Wallet` → `Trip Funds`) is a `Transfer`
 type and is separate from the "Receitas e Despesas" sheet dataset the app otherwise loads — it

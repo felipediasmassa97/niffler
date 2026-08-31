@@ -108,7 +108,15 @@ class TripBalanceCalculator(Operator):
                 "Subcategory": None,
                 "Tags": None,
                 "Month": date.to_period("M").to_timestamp(),
+                # Hardcoded rather than left for TierAssigner/DilutionAssigner to
+                # compute: this row is created downstream of both in the pipeline, so
+                # neither ever sees it. Both values match what they would have assigned
+                # anyway - "travel" is always Lifestyle-tiered and always diluted on
+                # both the income and expense side (see dilution.md/tiers.md) -
+                # a missing "Dilution" key here previously left this column NaN for the
+                # synthetic row, silently upcasting the whole column from bool to object
                 "Tier": "Lifestyle",
+                "Dilution": True,
             }
 
             # Add balance transaction to year N

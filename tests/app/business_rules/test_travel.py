@@ -182,9 +182,13 @@ def test_adjust_data_replaces_raw_rows_with_a_single_synthetic_balance_row(
     assert balance_row["Description"] == "Saldo Viagem 2025"
     assert balance_row["Value"] == pytest.approx(30000 - 825)
     assert balance_row["Tier"] == "Lifestyle"
+    assert balance_row["Dilution"]
     assert balance_row["Date"].strftime("%Y-%m-%d") == "2025-12-31"
     # The untouched Restaurant row survives unchanged
     assert (result["Category"] == "Restaurant").sum() == 1
+    # The synthetic row must not upcast Dilution from bool to object/float - which
+    # happens if pd.concat ever sees a row missing the "Dilution" key entirely
+    assert result["Dilution"].dtype == bool
 
 
 def test_adjust_data_inserts_a_balance_row_for_every_year_even_with_no_trip(
