@@ -30,7 +30,9 @@ matched falls back to a per-category default.
 `travel` shows up on the income side only via `TripBalanceCalculator`'s synthetic
 `"Saldo Viagem {year}"` balance transaction (see [travel.md](travel.md)) when a trip finishes
 under budget (`Value > 0`); it's diluted to match the expense-side `travel` treatment below, so
-the yearly trip result smooths the same way regardless of surplus or overrun.
+the yearly trip result smooths the same way regardless of surplus or overrun. This key only
+gets exercised because of the fixed pipeline order - see
+[README.md](README.md#pipeline-order-is-load-bearing).
 
 **Expenses** — `Value <= 0` (compared on the absolute value):
 

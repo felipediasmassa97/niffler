@@ -73,6 +73,10 @@ class ProcessedLoader(Operator):
 
     def __init__(self) -> None:
         """Initialize the processed data loader."""
+        # This order is load-bearing, not incidental - see docs/business_rules/README.md
+        # ("Pipeline order is load-bearing"). TripBalanceCalculator's synthetic balance
+        # row is created after both assigners, so it hardcodes Tier/Dilution itself
+        # instead of needing entries for "travel" in TierAssigner's income dict
         loader = Loader()
         self._processed_loader = TripBalanceCalculator(
             TierAssigner(DilutionAssigner(PreProcessedLoader(loader)))

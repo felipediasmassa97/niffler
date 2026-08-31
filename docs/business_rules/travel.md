@@ -34,7 +34,9 @@ For each year N from 2024 to the current year:
      row is created downstream of both in the pipeline and neither ever sees it - both
      values match what those rules would have assigned anyway, since `Travel` is always
      Lifestyle-tiered and always diluted regardless of income/expense direction (see
-     [dilution.md](dilution.md)/[tiers.md](tiers.md)).
+     [dilution.md](dilution.md)/[tiers.md](tiers.md)). This only holds because
+     `TripBalanceCalculator` runs last in the pipeline - see
+     [README.md](README.md#pipeline-order-is-load-bearing).
 
 Note: the pre-funding transfer transaction (year N-1, `Wallet` → `Trip Funds`) is a `Transfer`
 type and is separate from the "Receitas e Despesas" sheet dataset the app otherwise loads — it

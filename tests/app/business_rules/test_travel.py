@@ -3,6 +3,7 @@
 from typing import Any
 
 import pytest
+from utils.business.tiers import TierAssigner
 from utils.business.travel import TripBalanceCalculator
 from utils.globals import Account
 
@@ -204,3 +205,22 @@ def test_adjust_data_inserts_a_balance_row_for_every_year_even_with_no_trip(
     balance_rows = result[result["Description"] == "Saldo Viagem 2024"]
     assert len(balance_rows) == 1
     assert balance_rows.iloc[0]["Value"] == 0
+
+
+def test_tier_assigner_would_key_error_on_travel_income(make_operator: Any) -> None:
+    """Pins down why TierAssigner must run before TripBalanceCalculator.
+
+    TierAssigner's income dict has no "travel" key (see tiers.md) - it doesn't need
+    one only because TripBalanceCalculator creates the sole travel-income row (the
+    synthetic "Saldo Viagem" balance) *after* TierAssigner has already run in
+    ProcessedLoader, hardcoding Tier itself instead (see
+    docs/business_rules/README.md#pipeline-order-is-load-bearing). Feeding a
+    Trip-Funds Travel income row to TierAssigner directly - simulating a reordered
+    pipeline - raises KeyError, exactly as that doc warns it would.
+    """
+    operator = make_operator(
+        [{"Category": "Travel", "Account": Account.TRIP_FUNDS, "Value": 100}]
+    )
+
+    with pytest.raises(KeyError):
+        _ = TierAssigner(operator).data
